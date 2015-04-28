@@ -308,6 +308,13 @@ meld KERNEL/include/uapi/drm/etnaviv_drm.h ~/linux-src/include/uapi/drm/etnaviv_
 #	echo "dir: etnaviv/fixes"
 }
 
+botic () {
+	for patch in "${DIR}/patches/botic/"*.patch; do
+		${git} "$patch"
+	done
+	cp -f "${DIR}/patches/botic_defconfig" arch/arm/configs/
+}
+
 #overlay
 dt
 dts
@@ -317,6 +324,7 @@ fixes
 pru
 beaglebone
 etnaviv
+botic
 
 packaging_setup () {
 	cp -v "${DIR}/3rdparty/packaging/builddeb" "${DIR}/KERNEL/scripts/package"

@@ -1,0 +1,24 @@
+From cdbb9790ca9121b83fac3624689f85f3d4cf6a1e Mon Sep 17 00:00:00 2001
+From: Miroslav Rudisin <miero@seznam.cz>
+Date: Wed, 27 Aug 2014 23:29:11 +0200
+Subject: [PATCH 06/12] ASoC: declare support for DSD format
+
+---
+ sound/soc/soc-core.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/sound/soc/soc-core.c b/sound/soc/soc-core.c
+index e5c9908..b91e3e1 100644
+--- a/sound/soc/soc-core.c
++++ b/sound/soc/soc-core.c
+@@ -2945,6 +2945,7 @@ static u64 codec_format_map[] = {
+ 	SNDRV_PCM_FMTBIT_FLOAT64_LE | SNDRV_PCM_FMTBIT_FLOAT64_BE,
+ 	SNDRV_PCM_FMTBIT_IEC958_SUBFRAME_LE
+ 	| SNDRV_PCM_FMTBIT_IEC958_SUBFRAME_BE,
++	SNDRV_PCM_FMTBIT_DSD_U8
+ };
+ 
+ /* Fix up the DAI formats for endianness: codecs don't actually see
+-- 
+2.1.4
+

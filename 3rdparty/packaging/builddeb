@@ -306,6 +306,46 @@ fi
 (cd $objtree; find arch/$SRCARCH/include Module.symvers include scripts -type f) >> "$objtree/debian/hdrobjfiles"
 destdir=$kernel_headers_dir/usr/src/linux-headers-$version
 mkdir -p "$destdir"
+# Exclude host binaries
+sed -i \
+	-e '\@scripts/dtc/dtc$@d' \
+	-e '\@scripts/basic/fixdep$@d' \
+	-e '\@scripts/basic/bin2c$@d' \
+	-e '\@scripts/unifdef$@d' \
+	-e '\@scripts/genksyms/genksyms$@d' \
+	-e '\@scripts/conmakehash$@d' \
+	-e '\@scripts/recordmcount$@d' \
+	-e '\@scripts/kconfig/mconf$@d' \
+	-e '\@scripts/kconfig/conf$@d' \
+	-e '\@scripts/sortextable$@d' \
+	-e '\@scripts/mod/modpost$@d' \
+	-e '\@scripts/mod/mk_elfconfig$@d' \
+	-e '\@scripts/selinux/genheaders/genheaders$@d' \
+	-e '\@scripts/selinux/mdp/mdp$@d' \
+	-e '\@scripts/kallsyms$@d' \
+	-e '\@scripts/.*\.cmd$@d' \
+	-e '\@scripts/.*\.o$@d' \
+	"$objtree/debian/hdrsrcfiles"
+sed -i \
+	-e '\@scripts/dtc/dtc$@d' \
+	-e '\@scripts/basic/fixdep$@d' \
+	-e '\@scripts/basic/bin2c$@d' \
+	-e '\@scripts/unifdef$@d' \
+	-e '\@scripts/genksyms/genksyms$@d' \
+	-e '\@scripts/conmakehash$@d' \
+	-e '\@scripts/recordmcount$@d' \
+	-e '\@scripts/kconfig/mconf$@d' \
+	-e '\@scripts/kconfig/conf$@d' \
+	-e '\@scripts/sortextable$@d' \
+	-e '\@scripts/mod/modpost$@d' \
+	-e '\@scripts/mod/mk_elfconfig$@d' \
+	-e '\@scripts/selinux/genheaders/genheaders$@d' \
+	-e '\@scripts/selinux/mdp/mdp$@d' \
+	-e '\@scripts/kallsyms$@d' \
+	-e '\@scripts/.*\.cmd$@d' \
+	-e '\@scripts/.*\.o$@d' \
+	"$objtree/debian/hdrobjfiles"
+# Exclude ignored files too
 (cd $srctree; tar -c -f - -T -) < "$objtree/debian/hdrsrcfiles" | (cd $destdir; tar -xf -)
 (cd $objtree; tar -c -f - -T -) < "$objtree/debian/hdrobjfiles" | (cd $destdir; tar -xf -)
 (cd $objtree; cp $KCONFIG_CONFIG $destdir/.config) # copy .config manually to be where it's expected to be

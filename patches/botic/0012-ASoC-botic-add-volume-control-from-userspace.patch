@@ -1,0 +1,442 @@
+From 01c7227d4c8ca560a4fcf878c87d342461d90660 Mon Sep 17 00:00:00 2001
+From: Miroslav Rudisin <miero@seznam.cz>
+Date: Mon, 27 Apr 2015 23:43:43 +0200
+Subject: [PATCH 12/12] ASoC: botic: add volume control from userspace
+
+---
+ sound/soc/generic/botic-card.c | 328 ++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 327 insertions(+), 1 deletion(-)
+
+diff --git a/sound/soc/generic/botic-card.c b/sound/soc/generic/botic-card.c
+index f7ca9d7..ba1b19c 100644
+--- a/sound/soc/generic/botic-card.c
++++ b/sound/soc/generic/botic-card.c
+@@ -18,6 +18,7 @@
+ #include <sound/pcm.h>
+ #include <sound/soc.h>
+ #include <sound/pcm_params.h>
++#include <sound/tlv.h>
+ 
+ #include <asm/dma.h>
+ #include <asm/mach-types.h>
+@@ -40,6 +41,7 @@ static int gpio_ext_masterclk_switch = -1;
+ static int gpio_dsd_format_switch = -1;
+ static int gpio_card_power_switch = -1;
+ 
++static char helper_cmd[64];
+ static char *pinconfig = "default";
+ static char *serconfig = "MMMM"; /* I (I2S only), D (DSD only), M (I2S and DSD), S (SPDIF) */
+ 
+@@ -51,6 +53,18 @@ static int clk_44k1 = 22579200;
+ static int clk_48k = 24576000;
+ static int blr_ratio = 64;
+ 
++static char helper_data[512];
++static size_t helper_data_size;
++static ssize_t botic_helper_show(struct device *dev,
++        struct device_attribute *attr, char *buf);
++static ssize_t botic_helper_store(struct device *dev,
++        struct device_attribute *attr, const char *buf, size_t count);
++
++static DEVICE_ATTR(helper_data, 0600, botic_helper_show, botic_helper_store);
++static char botic_helper_data_path[64];
++
++static int botic_call_helper(const char *format, ...);
++
+ /* provide codec with botic driver */
+ #define ENABLE_BOTIC_CODEC
+ 
+@@ -106,7 +120,179 @@ static struct snd_soc_dai_driver botic_dac_dai = {
+     },
+ };
+ 
++struct botic_codec_ctl_elem {
++    long min;
++    long max;
++    long step;
++    long value;
++    unsigned int tlv[4];
++    bool fixed;
++};
++
++static int botic_codec_ctl_info(struct snd_kcontrol *kcontrol,
++                  struct snd_ctl_elem_info *uinfo)
++{
++    int ret;
++    long val;
++    unsigned int i;
++    char *token, *o;
++    struct botic_codec_ctl_elem *bce =
++        (struct botic_codec_ctl_elem *)kcontrol->private_value;
++
++    if (!bce->fixed) {
++        ret = botic_call_helper("ctl_info,%s,%s", kcontrol->id.name,
++                botic_helper_data_path);
++        if (!ret && helper_data_size) {
++            o = helper_data;
++            for (i = 0; i < 7; i++) {
++                token = strsep(&o, ",");
++                if (!token)
++                    break;
++                ret = kstrtol(token, 0, &val);
++                if (ret)
++                    ;/* skip on error */
++                else if (i == 0)
++                    bce->fixed = val;
++                else if (i == 1)
++                    bce->min = val;
++                else if (i == 2)
++                    bce->max = val;
++                else if (i == 3)
++                    bce->step = val;
++                else if (i == 4)
++                    bce->tlv[0] = val;
++                else if (i == 5)
++                    bce->tlv[2] = val;
++                else if (i == 6)
++                    bce->tlv[3] = val;
++            }
++        }
++        helper_data_size = 0;
++    }
++
++    uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
++    uinfo->count = 1;
++    uinfo->value.integer.min = bce->min;
++    uinfo->value.integer.max = bce->max;
++    uinfo->value.integer.step = bce->step;
++
++    return 0;
++}
++
++static int botic_codec_ctl_get(struct snd_kcontrol *kcontrol,
++                    struct snd_ctl_elem_value *ucontrol)
++{
++#if 0
++    struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
++    struct void *priv = snd_soc_codec_get_drvdata(codec);
++#endif
++    int ret;
++    struct botic_codec_ctl_elem *bce =
++        (struct botic_codec_ctl_elem *)kcontrol->private_value;
++
++    helper_data_size = 0;
++    ret = botic_call_helper("ctl_get,%s,%s", kcontrol->id.name,
++            botic_helper_data_path);
++    if (!ret && helper_data_size) {
++        /* ignore errors */
++        ret = kstrtol(helper_data, 0, &bce->value);
++        ret = 0;
++    }
++    helper_data_size = 0;
++    ucontrol->value.integer.value[0] = bce->value;
++
++    return ret;
++}
++
++static int botic_codec_ctl_put(struct snd_kcontrol *kcontrol,
++                    struct snd_ctl_elem_value *ucontrol)
++{
++#if 0
++    struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
++    struct void *priv = snd_soc_codec_get_drvdata(codec);
++#endif
++    int ret;
++    char *o;
++    struct botic_codec_ctl_elem *bce =
++        (struct botic_codec_ctl_elem *)kcontrol->private_value;
++
++    /* prepare volume data */
++    o = helper_data;
++    o += sprintf(o, "%ld", ucontrol->value.integer.value[0]);
++    *o++ = 0;
++    helper_data_size = o - helper_data;
++
++    ret = botic_call_helper("ctl_set,%s,%s", kcontrol->id.name,
++            botic_helper_data_path);
++    if (!ret) {
++        if (helper_data_size) {
++            /* ignore errors */
++            ret = kstrtol(helper_data, 0, &bce->value);
++        }
++        ret = 1; /* value has been changed */
++    }
++    helper_data_size = 0;
++
++    return ret;
++}
++
++#define BOTIC_TLV_MTRIM \
++    { SNDRV_CTL_TLVT_DB_LINEAR, 2 * sizeof(unsigned int), -12000, 0 }
++#define BOTIC_TLV_DAC \
++    { SNDRV_CTL_TLVT_DB_MINMAX, 2 * sizeof(unsigned int), -12750, 0 }
++
++static struct botic_codec_ctl_elem botic_codec_ctls[] = {
++    { .min = 0, .max = 0x7fffffff, .tlv = BOTIC_TLV_MTRIM, .fixed = 0 },
++    { .min = -255, .max = 0, .tlv = BOTIC_TLV_DAC, .fixed = 0 },
++    { .min = -255, .max = 0, .tlv = BOTIC_TLV_DAC, .fixed = 0 },
++    { .min = -255, .max = 0, .tlv = BOTIC_TLV_DAC, .fixed = 0 },
++    { .min = -255, .max = 0, .tlv = BOTIC_TLV_DAC, .fixed = 0 },
++    { .min = -255, .max = 0, .tlv = BOTIC_TLV_DAC, .fixed = 0 },
++    { .min = -255, .max = 0, .tlv = BOTIC_TLV_DAC, .fixed = 0 },
++    { .min = -255, .max = 0, .tlv = BOTIC_TLV_DAC, .fixed = 0 },
++    { .min = -255, .max = 0, .tlv = BOTIC_TLV_DAC, .fixed = 0 },
++};
++
++#define BOTIC_CODEC_MTRIM_NAME "MasterTrim Playback Volume"
++#define QUOTE_XX(x) #x
++#define BOTIC_CODEC_DAC_NAME(x) ("DAC" QUOTE_XX(x) " Playback Volume")
++
++#define BOTIC_KCTRL_ITEM(n, item) { \
++    .iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
++    .access = SNDRV_CTL_ELEM_ACCESS_TLV_READ | \
++              SNDRV_CTL_ELEM_ACCESS_READWRITE, \
++    .name = (n), \
++    .info = botic_codec_ctl_info, \
++    .get = botic_codec_ctl_get, \
++    .put = botic_codec_ctl_put, \
++    .tlv.p = (item)->tlv, \
++    .private_value = (unsigned long)(item), \
++}
++
++static struct snd_kcontrol_new botic_codec_controls[] = {
++    BOTIC_KCTRL_ITEM(BOTIC_CODEC_MTRIM_NAME, &botic_codec_ctls[0]),
++    BOTIC_KCTRL_ITEM(BOTIC_CODEC_DAC_NAME(0), &botic_codec_ctls[1]),
++    BOTIC_KCTRL_ITEM(BOTIC_CODEC_DAC_NAME(1), &botic_codec_ctls[2]),
++    BOTIC_KCTRL_ITEM(BOTIC_CODEC_DAC_NAME(2), &botic_codec_ctls[3]),
++    BOTIC_KCTRL_ITEM(BOTIC_CODEC_DAC_NAME(3), &botic_codec_ctls[4]),
++    BOTIC_KCTRL_ITEM(BOTIC_CODEC_DAC_NAME(4), &botic_codec_ctls[5]),
++    BOTIC_KCTRL_ITEM(BOTIC_CODEC_DAC_NAME(5), &botic_codec_ctls[6]),
++    BOTIC_KCTRL_ITEM(BOTIC_CODEC_DAC_NAME(6), &botic_codec_ctls[7]),
++    BOTIC_KCTRL_ITEM(BOTIC_CODEC_DAC_NAME(7), &botic_codec_ctls[8]),
++};
++
++static int botic_codec_probe(struct snd_soc_codec *codec)
++{
++    int ret;
++
++    ret = snd_soc_add_codec_controls(codec, botic_codec_controls,
++            ARRAY_SIZE(botic_codec_controls));
++
++    return ret;
++}
++
+ static struct snd_soc_codec_driver botic_codec_socdrv = {
++    .probe = botic_codec_probe,
+ };
+ 
+ static int botic_codec_socdrv_registered;
+@@ -209,6 +395,74 @@ static int botic_setup_serializers(struct snd_soc_dai *cpu_dai,
+     return 0;
+ }
+ 
++static ssize_t botic_helper_show(struct device *dev,
++        struct device_attribute *attr, char *buf)
++{
++    memcpy(buf, helper_data, helper_data_size);
++
++    return helper_data_size;
++}
++
++static ssize_t botic_helper_store(struct device *dev,
++        struct device_attribute *attr, const char *buf, size_t count)
++{
++    if (count < sizeof(helper_data) - 1) {
++        memcpy(helper_data, buf, count);
++        helper_data[count] = 0;
++        helper_data_size = count;
++    } else {
++        count = -1;
++    }
++
++    return count;
++}
++
++static int botic_call_helper(const char *format, ...)
++{
++    char argsfmt[100];
++    char *argv[] = { helper_cmd, argsfmt, NULL };
++    static char *envp[] = {
++        "HOME=/",
++        "PATH=/sbin:/bin:/usr/sbin:/usr/bin",
++        NULL
++    };
++
++    va_list args;
++    int ret;
++    int i;
++
++    /* cut command at the first non-printable characters (e.g. new-line) */
++    for (i = 0; i < sizeof(helper_cmd); i++) {
++        if (helper_cmd[i] < ' ') {
++            helper_cmd[i] = 0;
++            break;
++        }
++    }
++
++    printk(KERN_ERR "helper=%s\n", helper_cmd);
++
++    if (!helper_cmd[0])
++        return -ENOENT;
++
++    va_start(args, format);
++    ret = vsnprintf(argsfmt, sizeof(argsfmt), format, args);
++    va_end(args);
++
++    if (ret >= 0)
++        ret = call_usermodehelper(helper_cmd, argv, envp, UMH_WAIT_PROC);
++    if (ret) {
++        if (ret == -ENOENT) {
++            /* helper binary does not exist, continue... */
++        } else if (ret < 0) {
++            printk(KERN_WARNING "botic-card: error %d during %s execution\n",
++                    ret, helper_cmd);
++            ret = -EIO;
++        }
++    }
++
++    return ret;
++}
++
+ static int botic_hw_params(struct snd_pcm_substream *substream,
+              struct snd_pcm_hw_params *params)
+ {
+@@ -219,9 +473,15 @@ static int botic_hw_params(struct snd_pcm_substream *substream,
+     struct botic_ser_setup ser_setup;
+     int ret;
+ 
++    bool tx = substream->stream == SNDRV_PCM_STREAM_PLAYBACK;
+     snd_pcm_format_t format = params_format(params);
+     unsigned int rate = params_rate(params);
+ 
++#ifdef HELPER_WITH_TRIGGER
++    if (!substream->pcm->nonatomic)
++        return -EFAULT;
++#endif
++
+     /* setup CPU serializers */
+     ret = botic_setup_serializers(cpu_dai, format, &ser_setup);
+     if (ret < 0)
+@@ -348,14 +608,58 @@ static int botic_hw_params(struct snd_pcm_substream *substream,
+         return ret;
+     }
+ 
++    ret = botic_call_helper("hw_params,%c,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
++            tx ? 'P' : 'C', format, ser_setup.dai_fmt, rate, sysclk, bclk,
++            is_dsd(params_format(params)),
++            tx ? ser_setup.nch_tx : ser_setup.nch_rx,
++            tx ? ser_setup.tx_slots[0] : ser_setup.rx_slots[0],
++            tx ? ser_setup.tx_slots[1] : ser_setup.rx_slots[1],
++            tx ? ser_setup.tx_slots[2] : ser_setup.rx_slots[2],
++            tx ? ser_setup.tx_slots[3] : ser_setup.rx_slots[3]);
++
++    if (ret) {
++        /* missing helper is not error */
++        if (ret == -ENOENT)
++            ret = 0;
++    }
++
+     /* Insert delay needed for enabled clocks. */
+     udelay(50);
+ 
+-    return 0;
++    return ret;
++}
++
++#ifdef HELPER_WITH_TRIGGER
++static int botic_trigger(struct snd_pcm_substream *substream, int cmd)
++{
++    int ret = 0;
++    bool tx = substream->stream == SNDRV_PCM_STREAM_PLAYBACK;
++
++    switch (cmd) {
++    case SNDRV_PCM_TRIGGER_RESUME:
++    case SNDRV_PCM_TRIGGER_START:
++    case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
++        botic_call_helper("start,%c,%d", tx ? 'P' : 'C', cmd);
++        break;
++    case SNDRV_PCM_TRIGGER_SUSPEND:
++    case SNDRV_PCM_TRIGGER_STOP:
++    case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
++        botic_call_helper("stop,%c,%d", tx ? 'P' : 'C', cmd);
++        break;
++
++    default:
++        ret = -EINVAL;
++    }
++
++    return ret;
+ }
++#endif
+ 
+ static struct snd_soc_ops botic_ops = {
+     .hw_params = botic_hw_params,
++#ifdef HELPER_WITH_TRIGGER
++    .trigger = botic_trigger,
++#endif
+ };
+ 
+ /* digital audio interface glue - connects codec <--> CPU */
+@@ -415,10 +719,23 @@ static int get_optional_gpio(int *optional_gpio, struct platform_device *pdev,
+ static int asoc_botic_card_probe(struct platform_device *pdev)
+ {
+     struct device_node *np = pdev->dev.of_node;
++    char tmp[100];
+     struct pinctrl *pctl;
+     struct pinctrl_state *pctl_state;
+     int ret;
+ 
++    /* create helper data file */
++    ret = device_create_file(&pdev->dev, &dev_attr_helper_data);
++    if (ret) {
++        dev_err(&pdev->dev, "device_create_file failed (%d)\n", ret);
++        goto asoc_botic_card_probe_error;
++    }
++    /* store pathname to helper data file */
++    snprintf(botic_helper_data_path, sizeof(botic_helper_data_path),
++            "%s/%s",
++            kernfs_path(pdev->dev.kobj.sd, tmp, sizeof(tmp)),
++            dev_attr_helper_data.attr.name);
++
+     /* load selected pinconfig */
+     pctl = devm_pinctrl_get(&pdev->dev);
+     if (IS_ERR(pctl)) {
+@@ -570,12 +887,16 @@ static int asoc_botic_card_probe(struct platform_device *pdev)
+ 
+ asoc_botic_card_probe_error:
+     if (ret != 0) {
++        device_remove_file(&pdev->dev, &dev_attr_helper_data);
++
+ #ifdef ENABLE_BOTIC_CODEC
+         if (botic_codec_socdrv_registered) {
+             snd_soc_unregister_codec(&botic_codec_platdev->dev);
+             botic_codec_socdrv_registered = 0;
+         }
+ #endif
++        snd_soc_unregister_card(&botic_card);
++
+         if (gpio_int_masterclk_enable >= 0) {
+             gpio_free(gpio_int_masterclk_enable);
+         }
+@@ -597,6 +918,8 @@ static int asoc_botic_card_remove(struct platform_device *pdev)
+ {
+     struct snd_soc_card *card = platform_get_drvdata(pdev);
+ 
++    device_remove_file(&pdev->dev, &dev_attr_helper_data);
++
+ #ifdef ENABLE_BOTIC_CODEC
+     if (botic_codec_socdrv_registered) {
+         snd_soc_unregister_codec(&botic_codec_platdev->dev);
+@@ -742,6 +1065,9 @@ static void __exit botic_exit(void)
+ module_init(botic_init);
+ module_exit(botic_exit);
+ 
++module_param_string(helper_cmd, helper_cmd, sizeof(helper_cmd), 0644);
++MODULE_PARM_DESC(helper_cmd, "userspace codec helper");
++
+ module_param(pinconfig, charp, 0444);
+ MODULE_PARM_DESC(pinconfig, "selected pin configuration");
+ 
+-- 
+2.1.4
+

@@ -1,0 +1,76 @@
+From ad3e13d7f51d98e45d2c677b12d79d77adf74093 Mon Sep 17 00:00:00 2001
+From: Miroslav Rudisin <miero@seznam.cz>
+Date: Tue, 21 Apr 2015 18:08:36 +0200
+Subject: [PATCH 10/12] ASoC: mcasp: use older Davinci PCM transfers instead of
+ eDMA
+
+---
+ sound/soc/davinci/Kconfig         |  2 +-
+ sound/soc/davinci/davinci-mcasp.c | 18 ++++++++++++++++--
+ 2 files changed, 17 insertions(+), 3 deletions(-)
+
+diff --git a/sound/soc/davinci/Kconfig b/sound/soc/davinci/Kconfig
+index 2b81ca4..ff7b3b6 100644
+--- a/sound/soc/davinci/Kconfig
++++ b/sound/soc/davinci/Kconfig
+@@ -1,6 +1,6 @@
+ config SND_DAVINCI_SOC
+ 	tristate "SoC Audio for TI DAVINCI"
+-	depends on ARCH_DAVINCI
++	depends on ARCH_DAVINCI || SOC_AM33XX
+ 
+ config SND_EDMA_SOC
+ 	tristate "SoC Audio for Texas Instruments chips using eDMA (AM33XX/43XX)"
+diff --git a/sound/soc/davinci/davinci-mcasp.c b/sound/soc/davinci/davinci-mcasp.c
+index 7f7a8e9..ed45f37 100644
+--- a/sound/soc/davinci/davinci-mcasp.c
++++ b/sound/soc/davinci/davinci-mcasp.c
+@@ -42,6 +42,13 @@
+ 
+ #define MCASP_MAX_AFIFO_DEPTH	64
+ 
++/*
++ * Audio transfer method selector:
++ *
++ * for HD audio the older Davinci method has bettter performance than new eDMA engine
++ */
++static int use_davinci = 1;
++
+ static u32 context_regs[] = {
+ 	DAVINCI_MCASP_TXFMCTL_REG,
+ 	DAVINCI_MCASP_RXFMCTL_REG,
+@@ -1171,7 +1178,8 @@ static int davinci_mcasp_dai_probe(struct snd_soc_dai *dai)
+ {
+ 	struct davinci_mcasp *mcasp = snd_soc_dai_get_drvdata(dai);
+ 
+-	if (mcasp->version >= MCASP_VERSION_3) {
++	if ((!use_davinci && mcasp->version == MCASP_VERSION_3) ||
++			(mcasp->version > MCASP_VERSION_3)) {
+ 		/* Using dmaengine PCM */
+ 		dai->playback_dma_data =
+ 				&mcasp->dma_data[SNDRV_PCM_STREAM_PLAYBACK];
+@@ -1727,7 +1735,10 @@ static int davinci_mcasp_probe(struct platform_device *pdev)
+ 	(IS_MODULE(CONFIG_SND_DAVINCI_SOC_MCASP) && \
+ 	 IS_MODULE(CONFIG_SND_EDMA_SOC))
+ 	case MCASP_VERSION_3:
+-		ret = edma_pcm_platform_register(&pdev->dev);
++		if (use_davinci)
++			ret = davinci_soc_platform_register(&pdev->dev);
++		else 
++			ret = edma_pcm_platform_register(&pdev->dev);
+ 		break;
+ #endif
+ #if IS_BUILTIN(CONFIG_SND_OMAP_SOC) || \
+@@ -1776,6 +1787,9 @@ static struct platform_driver davinci_mcasp_driver = {
+ 
+ module_platform_driver(davinci_mcasp_driver);
+ 
++module_param(use_davinci, int, 0444);
++MODULE_PARM_DESC(use_davinci, "use Davinci PCM transfers instead of eDMA");
++
+ MODULE_AUTHOR("Steve Chen");
+ MODULE_DESCRIPTION("TI DAVINCI McASP SoC Interface");
+ MODULE_LICENSE("GPL");
+-- 
+2.1.4
+

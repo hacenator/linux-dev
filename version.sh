@@ -2,7 +2,7 @@
 #
 ARCH=$(uname -m)
 
-config="multi_v7_defconfig"
+config="botic_defconfig"
 
 #toolchain="gcc_linaro_eabi_4_8"
 #toolchain="gcc_linaro_eabi_4_9"
@@ -12,13 +12,13 @@ config="multi_v7_defconfig"
 toolchain="gcc_linaro_gnueabihf_4_9"
 
 #Kernel/Build
-KERNEL_REL=4.1
-KERNEL_TAG=${KERNEL_REL}-rc1
-BUILD=armv7-devel-r25
+KERNEL_REL=4.0
+KERNEL_TAG=${KERNEL_REL}
+BUILD=botic5
 
 #v3.X-rcX + upto SHA
-prev_KERNEL_SHA="2decb2682f80759f631c8332f9a2a34a02150a03"
-KERNEL_SHA="14bc84ce0b41787acc08aefabe718479c5dde60e"
+#prev_KERNEL_SHA="34c9a0ffc75ad25b6a60f61e27c4a4b1189b8085"
+#KERNEL_SHA="54e514b91b95d6441c12a7955addfb9f9d2afc65"
 
 #git branch
 #BRANCH="v4.1.x"
