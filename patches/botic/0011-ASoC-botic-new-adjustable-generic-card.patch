@@ -28,8 +28,8 @@ index 4ebfa68..57ceaf9 100644
  	am335x-boneblack.dtb \
 +	am335x-boneblack-botic.dtb \
  	am335x-boneblack-replicape.dtb \
- 	am335x-boneblack-ttyO5.dtb \
- 	am335x-boneblack-ttyO4.dtb \
+ 	am335x-boneblack-ttyS5.dtb \
+ 	am335x-boneblack-ttyS4.dtb \
 diff --git a/arch/arm/boot/dts/am335x-bone-botic.dtsi b/arch/arm/boot/dts/am335x-bone-botic.dtsi
 new file mode 100644
 index 0000000..7632077
@@ -224,8 +224,8 @@ index 627b8c5..c6f6d30 100644
 +++ b/arch/arm/boot/dts/am335x-boneblack.dts
 @@ -62,3 +62,5 @@
  
- /* #include "am335x-peripheral-ttyO5.dtsi" */
- /* #include "am335x-bone-pinmux-ttyO5.dtsi" */
+ /* #include "am335x-peripheral-ttyS5.dtsi" */
+ /* #include "am335x-bone-pinmux-ttyS5.dtsi" */
 +
 +#include "am335x-bone-botic.dtsi"
 diff --git a/sound/soc/davinci/Makefile b/sound/soc/davinci/Makefile

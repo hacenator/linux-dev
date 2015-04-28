@@ -317,13 +317,13 @@ botic () {
 
 #overlay
 dt
-dts
-wand
+#dts
+#wand
 errata
 fixes
 pru
 beaglebone
-etnaviv
+#etnaviv
 botic
 
 packaging_setup () {
