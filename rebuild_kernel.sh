@@ -1,6 +1,7 @@
 #!/bin/sh -e
 #
 # Copyright (c) 2009-2015 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2016 Miroslav Rudisin
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -189,6 +190,7 @@ make_pkg () {
 		;;
 	esac
 
+if false; then
 	echo "Compressing ${KERNEL_UTS}${deployfile}..."
 	cd ${DIR}/deploy/tmp
 	tar ${tar_options} ../${KERNEL_UTS}${deployfile} *
@@ -202,6 +204,7 @@ make_pkg () {
 	else
 		ls -lh "${DIR}/deploy/${KERNEL_UTS}${deployfile}"
 	fi
+fi
 }
 
 make_modules_pkg () {
@@ -219,7 +222,7 @@ make_dtbs_pkg () {
 	make_pkg
 }
 
-/bin/sh -e ${DIR}/tools/host_det.sh || { exit 1 ; }
+#/bin/sh -e ${DIR}/tools/host_det.sh || { exit 1 ; }
 
 if [ ! -f ${DIR}/system.sh ] ; then
 	cp -v ${DIR}/system.sh.sample ${DIR}/system.sh
@@ -260,8 +263,13 @@ fi
 . ${DIR}/version.sh
 export LINUX_GIT
 
-#unset FULL_REBUILD
-FULL_REBUILD=1
+if [ "$1" = 0 ]; then
+unset AUTO_BUILD
+else
+AUTO_BUILD=1
+fi
+unset FULL_REBUILD
+#FULL_REBUILD=1
 if [ "${FULL_REBUILD}" ] ; then
 	/bin/sh -e "${DIR}/scripts/git.sh" || { exit 1 ; }
 	cp "${DIR}/KERNEL/scripts/package/builddeb" "${DIR}/3rdparty/packaging/"
@@ -277,10 +285,12 @@ if [ ! ${AUTO_BUILD} ] ; then
 	make_menuconfig
 fi
 make_kernel
+if false; then
 make_modules_pkg
 make_firmware_pkg
 if [ "x${DTBS}" = "xenable" ] ; then
 	make_dtbs_pkg
+fi
 fi
 echo "-----------------------------"
 echo "Script Complete"
