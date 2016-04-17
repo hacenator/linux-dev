@@ -21,20 +21,20 @@
 # THE SOFTWARE.
 
 H=root@botic
-V=4.0.0-botic5.1
-
 DTB=am335x-boneblack-botic.dtb
+CMDLINE='`cat /proc/cmdline | sed s/clk=3/clk=3/`'
 
-FULL=${1:-}
+do_rsync()
+{
+    rsync -e "ssh -ax" -avzOm --no-motd "$@"
+}
 
-rsync -e "ssh -ax" -avzO --include="*/" --include="**.ko" --exclude="*" KERNEL/./ $H:/lib/modules/$V/kernel/
-if [ "$FULL" ]; then
-    rsync -e "ssh -ax" -avzO KERNEL/./modules.builtin KERNEL/./modules.order $H:/lib/modules/$V/
-    ssh $H "depmod $V"
-fi
-rsync -e "ssh -ax" -avzO KERNEL/arch/arm/boot/dts/$DTB KERNEL/arch/arm/boot/zImage $H:/dev/shm/
-ssh $H 'CL=`cat /proc/cmdline`; kexec -l --command-line="$CL" --dtb="/dev/shm/'$DTB'" /dev/shm/zImage; exec >/dev/null 2>&1; sleep .5 && kexec -e -x &'
+V=`cat ./kernel_version`
+do_rsync --rsync-path="mkdir -p /lib/modules/$V/kernel && rsync" --include="*/" --include="**.ko" --exclude="*" KERNEL/./ "$H:/lib/modules/$V/kernel"
+do_rsync KERNEL/./modules.builtin KERNEL/./modules.order $H:/lib/modules/$V/
+do_rsync KERNEL/arch/arm/boot/dts/$DTB KERNEL/arch/arm/boot/zImage $H:/dev/shm/
+ssh $H "depmod -A $V; kexec -l --command-line=\"$CMDLINE\" --dtb='/dev/shm/$DTB' /dev/shm/zImage; exec >/dev/null 2>&1; sleep .5 && kexec -e -x &"
 echo "Reboot!"
 sleep 5
 echo "Connecting to $H"
-ssh -o ConnectTimeout=1 -o ConnectionAttempts=100 $H
+ssh -o ConnectTimeout=1 -o ConnectionAttempts=100 $H "$@"

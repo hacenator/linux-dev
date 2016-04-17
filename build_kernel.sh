@@ -39,56 +39,11 @@ patch_kernel () {
 	cd ${DIR}/
 }
 
-config_reference () {
-	echo "Updating reference config: ${ref_config}"
-	make ARCH=arm CROSS_COMPILE="${CC}" ${ref_config}
-	cp -v .config ${DIR}/patches/example_${ref_config}
-}
-
 copy_defconfig () {
 	cd ${DIR}/KERNEL/
 	make ARCH=arm CROSS_COMPILE="${CC}" distclean
 	make ARCH=arm CROSS_COMPILE="${CC}" ${config}
-	cp -v .config ${DIR}/patches/ref_${config}
-
-if false; then
-	ref_config="imx_v6_v7_defconfig"
-	config_reference
-
-	ref_config="omap2plus_defconfig"
-	config_reference
-
-	ref_config="sunxi_defconfig"
-	config_reference
-
-	ref_config="tegra_defconfig"
-	config_reference
-
-	echo "-----------------------------"
-	echo "Updating: defconfig-lpae"
-	echo "-----------------------------"
-	cp -v ${DIR}/patches/defconfig-lpae .config
-	make ARCH=arm CROSS_COMPILE="${CC}" oldconfig
-	cp -v .config ${DIR}/patches/defconfig-lpae
-	echo "-----------------------------"
-
-	echo "-----------------------------"
-	echo "Updating: defconfig-bone"
-	echo "-----------------------------"
-	cp -v ${DIR}/patches/defconfig-bone .config
-	make ARCH=arm CROSS_COMPILE="${CC}" oldconfig
-	cp -v .config ${DIR}/patches/defconfig-bone
-	echo "-----------------------------"
-fi
-
-	echo "-----------------------------"
-	echo "Updating: defconfig"
-	echo "-----------------------------"
-	cp -v ${DIR}/patches/defconfig .config
-	make ARCH=arm CROSS_COMPILE="${CC}" oldconfig
-	cp -v .config ${DIR}/patches/defconfig
-
-	cp -v ${DIR}/patches/defconfig .config
+	cp -v .config "${DIR}/patches/defconfig"
 	cd ${DIR}/
 }
 
@@ -134,6 +89,12 @@ make_kernel () {
 	fi
 
 	KERNEL_UTS=$(cat ${DIR}/KERNEL/include/generated/utsrelease.h | awk '{print $3}' | sed 's/\"//g' )
+
+	if [ "${FAST_REBUILD}" ]; then
+		echo "${KERNEL_UTS}" > kernel_version
+		echo "Fast rebuild DONE."
+		exit
+	fi
 
 	if [ -f "${DIR}/deploy/${KERNEL_UTS}.${image}" ] ; then
 		rm -rf "${DIR}/deploy/${KERNEL_UTS}.${image}" || true
@@ -219,7 +180,10 @@ make_dtbs_pkg () {
 	make_pkg
 }
 
-/bin/sh -e ${DIR}/tools/host_det.sh || { exit 1 ; }
+FAST_REBUILD=$1
+if [ ! "${FAST_REBUILD}" ]; then
+	/bin/sh -e "${DIR}/tools/host_det.sh" || { exit 1 ; }
+fi
 
 if [ ! -f ${DIR}/system.sh ] ; then
 	cp -v ${DIR}/system.sh.sample ${DIR}/system.sh
@@ -261,7 +225,18 @@ fi
 export LINUX_GIT
 
 #unset FULL_REBUILD
-FULL_REBUILD=1
+if [ "${FULL_REBUILD}" -o ! "${FAST_REBUILD}" ]; then
+	echo "Full rebuild will start in 10 seconds..."
+	sleep 10
+	FULL_REBUILD=1
+elif [ "${FAST_REBUILD}" = 0 ]; then
+	FULL_REBUILD=
+	AUTO_BUILD=
+else
+	FULL_REBUILD=
+	AUTO_BUILD=1
+fi
+
 if [ "${FULL_REBUILD}" ] ; then
 	/bin/sh -e "${DIR}/scripts/git.sh" || { exit 1 ; }
 	cp "${DIR}/KERNEL/scripts/package/builddeb" "${DIR}/3rdparty/packaging/"
