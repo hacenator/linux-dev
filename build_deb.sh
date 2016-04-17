@@ -44,7 +44,6 @@ copy_defconfig () {
 	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" distclean
 	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" "${config}"
 	cp -v .config "${DIR}/patches/ref_${config}"
-	cp -v "${DIR}/patches/defconfig" .config
 	cd "${DIR}/" || exit
 }
 

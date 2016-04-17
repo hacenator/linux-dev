@@ -1,0 +1,63 @@
+From 28a7ab96d4a9fbc145c03476ba012b60490f9712 Mon Sep 17 00:00:00 2001
+From: Miroslav Rudisin <miero@seznam.cz>
+Date: Sun, 17 Apr 2016 18:12:11 +0200
+Subject: [PATCH] exclude host binaries from header deb package
+
+---
+ scripts/package/builddeb | 40 ++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 40 insertions(+)
+
+diff --git a/scripts/package/builddeb b/scripts/package/builddeb
+index 5221d24..210fd62 100755
+--- a/scripts/package/builddeb
++++ b/scripts/package/builddeb
+@@ -337,6 +337,46 @@ fi
+ (cd $objtree; find arch/$SRCARCH/include Module.symvers include scripts -type f) >> "$objtree/debian/hdrobjfiles"
+ destdir=$kernel_headers_dir/usr/src/linux-headers-$version
+ mkdir -p "$destdir"
++# Exclude host binaries
++sed -i \
++	-e '\@scripts/dtc/dtc$@d' \
++	-e '\@scripts/basic/fixdep$@d' \
++	-e '\@scripts/basic/bin2c$@d' \
++	-e '\@scripts/unifdef$@d' \
++	-e '\@scripts/genksyms/genksyms$@d' \
++	-e '\@scripts/conmakehash$@d' \
++	-e '\@scripts/recordmcount$@d' \
++	-e '\@scripts/kconfig/mconf$@d' \
++	-e '\@scripts/kconfig/conf$@d' \
++	-e '\@scripts/sortextable$@d' \
++	-e '\@scripts/mod/modpost$@d' \
++	-e '\@scripts/mod/mk_elfconfig$@d' \
++	-e '\@scripts/selinux/genheaders/genheaders$@d' \
++	-e '\@scripts/selinux/mdp/mdp$@d' \
++	-e '\@scripts/kallsyms$@d' \
++	-e '\@scripts/.*\.cmd$@d' \
++	-e '\@scripts/.*\.o$@d' \
++	"$objtree/debian/hdrsrcfiles"
++sed -i \
++	-e '\@scripts/dtc/dtc$@d' \
++	-e '\@scripts/basic/fixdep$@d' \
++	-e '\@scripts/basic/bin2c$@d' \
++	-e '\@scripts/unifdef$@d' \
++	-e '\@scripts/genksyms/genksyms$@d' \
++	-e '\@scripts/conmakehash$@d' \
++	-e '\@scripts/recordmcount$@d' \
++	-e '\@scripts/kconfig/mconf$@d' \
++	-e '\@scripts/kconfig/conf$@d' \
++	-e '\@scripts/sortextable$@d' \
++	-e '\@scripts/mod/modpost$@d' \
++	-e '\@scripts/mod/mk_elfconfig$@d' \
++	-e '\@scripts/selinux/genheaders/genheaders$@d' \
++	-e '\@scripts/selinux/mdp/mdp$@d' \
++	-e '\@scripts/kallsyms$@d' \
++	-e '\@scripts/.*\.cmd$@d' \
++	-e '\@scripts/.*\.o$@d' \
++	"$objtree/debian/hdrobjfiles"
++# Exclude ignored files too
+ (cd $srctree; tar -c -f - -T -) < "$objtree/debian/hdrsrcfiles" | (cd $destdir; tar -xf -)
+ (cd $objtree; tar -c -f - -T -) < "$objtree/debian/hdrobjfiles" | (cd $destdir; tar -xf -)
+ (cd $objtree; cp $KCONFIG_CONFIG $destdir/.config) # copy .config manually to be where it's expected to be
+-- 
+2.1.4
+

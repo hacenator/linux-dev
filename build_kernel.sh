@@ -88,7 +88,7 @@ config_comparsion () {
 
 copy_defconfig () {
 	cd "${DIR}/KERNEL" || exit
-	make ARCH=arm CROSS_COMPILE="${CC}" distclean
+	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" distclean
 	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" "${config}"
 	cp -v .config "${DIR}/patches/defconfig"
 	cd "${DIR}/" || exit
