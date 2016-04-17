@@ -2,9 +2,9 @@
 #
 ARCH=$(uname -m)
 
-config="multi_v7_defconfig"
+config="botic_defconfig"
 
-build_prefix="armv7-devel-r"
+build_prefix="botic7pre1-armv7-devel-r"
 branch_prefix="v"
 branch_postfix=".x"
 
@@ -25,7 +25,7 @@ toolchain="gcc_linaro_gnueabihf_5"
 #Kernel/Build
 KERNEL_REL=4.5
 KERNEL_TAG=${KERNEL_REL}-rc6
-BUILD=${build_prefix}54
+BUILD=${build_prefix}53
 kernel_rt=".X-rtY"
 
 #v4.X-rcX + upto SHA

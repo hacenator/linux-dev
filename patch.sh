@@ -943,6 +943,32 @@ quieter () {
 	fi
 }
 
+botic () {
+	echo "dir: botic"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/botic/0001-pm-schedule-shutdown-on-power-loss.patch"
+	${git} "${DIR}/patches/botic/0002-tps65217-force-low-noise-fixed-frequency.patch"
+	${git} "${DIR}/patches/botic/0003-ALSA-add-support-for-sampling-rates-up-to-768kHz.patch"
+	${git} "${DIR}/patches/botic/0004-ASoC-new-daifmt-DIT.patch"
+	${git} "${DIR}/patches/botic/0005-ASoC-declare-support-for-DSD-format.patch"
+	${git} "${DIR}/patches/botic/0006-ASoC-mcasp-support-right-justified-TX-DAI-format.patch"
+	${git} "${DIR}/patches/botic/0007-ASoC-mcasp-allow-to-change-serializer-cfg.patch"
+	${git} "${DIR}/patches/botic/0008-ASoC-mcasp-add-support-for-DSD-and-high-sampling.patch"
+	${git} "${DIR}/patches/botic/0009-add-botic-card-with-embedded-codec.patch"
+	${git} "${DIR}/patches/botic/0010-add-DTS-for-Botic-on-BBB.patch"
+
+	cp -f "${DIR}/patches/botic_defconfig" arch/arm/configs/
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=10
+		cleanup
+	fi
+}
+
 ###
 lts44_backports
 reverts
@@ -957,6 +983,7 @@ bbb_overlays
 beaglebone
 etnaviv
 quieter
+botic
 
 packaging () {
 	echo "dir: packaging"

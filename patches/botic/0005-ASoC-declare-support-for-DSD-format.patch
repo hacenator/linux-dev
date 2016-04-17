@@ -1,0 +1,26 @@
+From e7fea1b6f8a50cba886bbcfed37bf5902d9d3f2e Mon Sep 17 00:00:00 2001
+From: Miroslav Rudisin <miero@seznam.cz>
+Date: Sun, 6 Mar 2016 11:00:46 +0100
+Subject: [PATCH] ASoC: declare support for DSD format
+
+---
+ sound/soc/soc-core.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/sound/soc/soc-core.c b/sound/soc/soc-core.c
+index 790ee2b..910ab85 100644
+--- a/sound/soc/soc-core.c
++++ b/sound/soc/soc-core.c
+@@ -3232,6 +3232,9 @@ static u64 codec_format_map[] = {
+ 	SNDRV_PCM_FMTBIT_U18_3LE | SNDRV_PCM_FMTBIT_U18_3BE,
+ 	SNDRV_PCM_FMTBIT_FLOAT_LE | SNDRV_PCM_FMTBIT_FLOAT_BE,
+ 	SNDRV_PCM_FMTBIT_FLOAT64_LE | SNDRV_PCM_FMTBIT_FLOAT64_BE,
++	SNDRV_PCM_FMTBIT_DSD_U8,
++	SNDRV_PCM_FMTBIT_DSD_U16_LE | SNDRV_PCM_FMTBIT_DSD_U16_BE,
++	SNDRV_PCM_FMTBIT_DSD_U32_LE | SNDRV_PCM_FMTBIT_DSD_U32_BE,
+ 	SNDRV_PCM_FMTBIT_IEC958_SUBFRAME_LE
+ 	| SNDRV_PCM_FMTBIT_IEC958_SUBFRAME_BE,
+ };
+-- 
+2.1.4
+
