@@ -22,13 +22,18 @@
 
 H=root@botic
 DTB=am335x-boneblack-botic.dtb
+CMDLINE='`cat /proc/cmdline | sed s/clk=3/clk=3/`'
+
+do_rsync()
+{
+    rsync -e "ssh -ax" -avzOm --no-motd "$@"
+}
 
 V=`cat ./kernel_version`
-
-rsync -e "ssh -ax" -avzO --include="*/" --include="**.ko" --exclude="*" KERNEL/./ $H:/lib/modules/$V/kernel/
-rsync -e "ssh -ax" -avzO KERNEL/./modules.builtin KERNEL/./modules.order $H:/lib/modules/$V/
-rsync -e "ssh -ax" -avzO KERNEL/arch/arm/boot/dts/$DTB KERNEL/arch/arm/boot/zImage $H:/dev/shm/
-ssh $H "depmod $V;"'CL=`cat /proc/cmdline | sed s/clk=3/clk=3/`; kexec -l --command-line="$CL" --dtb="/dev/shm/'$DTB'" /dev/shm/zImage; exec >/dev/null 2>&1; sleep .5 && kexec -e -x &'
+do_rsync --rsync-path="mkdir -p /lib/modules/$V/kernel && rsync" --include="*/" --include="**.ko" --exclude="*" KERNEL/./ "$H:/lib/modules/$V/kernel"
+do_rsync KERNEL/./modules.builtin KERNEL/./modules.order $H:/lib/modules/$V/
+do_rsync KERNEL/arch/arm/boot/dts/$DTB KERNEL/arch/arm/boot/zImage $H:/dev/shm/
+ssh $H "depmod -A $V; kexec -l --command-line=\"$CMDLINE\" --dtb='/dev/shm/$DTB' /dev/shm/zImage; exec >/dev/null 2>&1; sleep .5 && kexec -e -x &"
 echo "Reboot!"
 sleep 5
 echo "Connecting to $H"
