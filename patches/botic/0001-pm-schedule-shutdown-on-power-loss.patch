@@ -1,16 +1,16 @@
-From 3b328d87a04e6ee1cc609e2e0bd8fab14bdd4e3c Mon Sep 17 00:00:00 2001
+From e9ade1015baa423a0124b424fe71c4e57236a9ec Mon Sep 17 00:00:00 2001
 From: Miroslav Rudisin <miero@seznam.cz>
 Date: Sun, 6 Mar 2016 10:36:15 +0100
 Subject: [PATCH] pm: schedule shutdown on power loss
 
 ---
- drivers/mfd/tps65217.c | 49 ++++++++++++++++++++++++++++++++++++++++---------
- drivers/rtc/rtc-omap.c | 26 +++++++++++++++++++++++---
+ drivers/mfd/tps65217.c | 72 +++++++++++++++++++++++++++++++++++++++++---------
+ drivers/rtc/rtc-omap.c | 26 +++++++++++++++---
  include/linux/pm.h     |  1 +
- 3 files changed, 64 insertions(+), 12 deletions(-)
+ 3 files changed, 83 insertions(+), 16 deletions(-)
 
 diff --git a/drivers/mfd/tps65217.c b/drivers/mfd/tps65217.c
-index ca19130..3e6d660 100644
+index ca19130..d24a42b 100644
 --- a/drivers/mfd/tps65217.c
 +++ b/drivers/mfd/tps65217.c
 @@ -34,6 +34,11 @@
@@ -25,7 +25,7 @@ index ca19130..3e6d660 100644
  static const struct mfd_cell tps65217s[] = {
  	{
  		.name = "tps65217-pmic",
-@@ -166,10 +171,16 @@ static const struct of_device_id tps65217_of_match[] = {
+@@ -166,17 +171,33 @@ static const struct of_device_id tps65217_of_match[] = {
  };
  MODULE_DEVICE_TABLE(of, tps65217_of_match);
  
@@ -39,10 +39,30 @@ index ca19130..3e6d660 100644
 +	static int power_off_scheduled = 0;
 +	int schedule_power_off = 0;
 +	int on_battery;
++	int ret;
  
- 	tps65217_reg_read(tps, TPS65217_REG_INT, &int_reg);
- 	tps65217_reg_read(tps, TPS65217_REG_STATUS, &status_reg);
-@@ -185,18 +196,32 @@ static irqreturn_t tps65217_irq(int irq, void *irq_data)
+-	tps65217_reg_read(tps, TPS65217_REG_INT, &int_reg);
+-	tps65217_reg_read(tps, TPS65217_REG_STATUS, &status_reg);
++	ret = tps65217_reg_read(tps, TPS65217_REG_INT, &int_reg);
++	if (ret < 0) {
++		dev_dbg(tps->dev, "Failed to read INT reg\n");
++		return IRQ_NONE;
++	}
++	ret = tps65217_reg_read(tps, TPS65217_REG_STATUS, &status_reg);
++	if (ret < 0) {
++		dev_dbg(tps->dev, "Failed to read STATUS reg\n");
++		return IRQ_NONE;
++	}
+ 	if (status_reg)
+ 		dev_dbg(tps->dev, "status now: 0x%X\n", status_reg);
+ 
+-	if (!int_reg)
++	if ((int_reg & (TPS65217_INT_PBI | TPS65217_INT_ACI | TPS65217_INT_USBI))
++			== 0)
+ 		return IRQ_NONE;
+ 
+ 	if (int_reg & TPS65217_INT_PBI) {
+@@ -185,18 +206,37 @@ static irqreturn_t tps65217_irq(int irq, void *irq_data)
  		input_report_key(tps->pwr_but, KEY_POWER,
  				status_reg & TPS65217_STATUS_PB);
  		input_sync(tps->pwr_but);
@@ -55,17 +75,18 @@ index ca19130..3e6d660 100644
 -		/* Press KEY_POWER when AC not present */
 -		input_report_key(tps->pwr_but, KEY_POWER,
 -				~status_reg & TPS65217_STATUS_ACPWR);
+-		input_sync(tps->pwr_but);
 +	on_battery = !(status_reg & (TPS65217_STATUS_ACPWR |
 +								 TPS65217_STATUS_USBPWR));
 +	if (int_reg & (TPS65217_INT_ACI | TPS65217_INT_USBI)) {
 +		/* Handle external power status change */
 +		dev_dbg(tps->dev, "external power status change\n");
-+		/* Press KEY_POWER when external power not present */
-+		input_report_key(tps->pwr_but, KEY_POWER, 1);
-+		/* Switch again to generate input event if button is held. */
-+		input_report_key(tps->pwr_but, KEY_POWER, 0);
- 		input_sync(tps->pwr_but);
-+		schedule_power_off = 1;
++		if (on_battery && power_off_on_battery) {
++			input_report_key(tps->pwr_but, KEY_POWER, 1);
++			input_report_key(tps->pwr_but, KEY_POWER, 0);
++			input_sync(tps->pwr_but);
++			schedule_power_off = 1;
++		}
  	}
 -	if (int_reg & TPS65217_INT_USBI) {
 -		/* Handle USB power status change */
@@ -78,13 +99,18 @@ index ca19130..3e6d660 100644
 +			if (pm_schedule_power_off)
 +				pm_schedule_power_off(power_off_timeout);
 +		} else if (power_off_timeout == 1) {
++#ifndef MODULE
 +			/* immediate power off */
 +			machine_power_off();
++#else
++			/* clean system power_off */
++			kernel_power_off();
++#endif
 +		}
  	}
  
  	return IRQ_HANDLED;
-@@ -390,6 +415,12 @@ static void __exit tps65217_exit(void)
+@@ -390,6 +430,12 @@ static void __exit tps65217_exit(void)
  }
  module_exit(tps65217_exit);
  
