@@ -22,19 +22,49 @@
 
 H=root@botic
 DTB=am335x-boneblack-botic.dtb
+
+MODE=kexec
+#MODE=tftp
+
+# (kexec only) update
 CMDLINE='`cat /proc/cmdline | sed s/clk=3/clk=3/`'
+
+# (tftp only)
+TFTPDIR=/srv/tftp
+
+# no ssh/rsync if 1st argument is set to 'l'
+ARG=${1:-}
 
 do_rsync()
 {
+    if [ "$ARG" = l ]; then return; fi
     rsync -e "ssh -ax" -avzOm --no-motd "$@"
+}
+
+do_ssh()
+{
+    if [ "$ARG" = l ]; then return; fi
+    ssh "$@"
 }
 
 V=`cat ./kernel_version`
 do_rsync --rsync-path="mkdir -p /lib/modules/$V/kernel && rsync" --include="*/" --include="**.ko" --exclude="*" KERNEL/./ "$H:/lib/modules/$V/kernel"
 do_rsync KERNEL/./modules.builtin KERNEL/./modules.order $H:/lib/modules/$V/
-do_rsync KERNEL/arch/arm/boot/dts/$DTB KERNEL/arch/arm/boot/zImage $H:/dev/shm/
-ssh $H "depmod -A $V; kexec -l --command-line=\"$CMDLINE\" --dtb='/dev/shm/$DTB' /dev/shm/zImage; exec >/dev/null 2>&1; sleep .5 && kexec -e -x &"
-echo "Reboot!"
-sleep 5
-echo "Connecting to $H"
-ssh -o ConnectTimeout=1 -o ConnectionAttempts=100 $H "$@"
+
+if [ "$MODE" = kexec ]; then
+    do_rsync KERNEL/arch/arm/boot/dts/$DTB KERNEL/arch/arm/boot/zImage $H:/dev/shm/
+    do_ssh $H "depmod -A $V; sync; kexec -l --command-line=\"$CMDLINE\" --dtb='/dev/shm/$DTB' /dev/shm/zImage; exec >/dev/null 2>&1; sleep .5 && kexec -e -x &"
+elif [ "$MODE" = tftp ]; then
+    cp -vf KERNEL/arch/arm/boot/dts/$DTB $TFTPDIR/dtbs/
+    cp -vf KERNEL/arch/arm/boot/zImage $TFTPDIR/
+    do_ssh $H "depmod -A $V; sync; exec >/dev/null 2>&1; sleep .5 && reboot &"
+else
+    echo "Error: unsupported mode" >&2
+    exit 1
+fi
+if [ "$ARG" != l ]; then
+    echo "Reboot!"
+    sleep 5
+    echo "Connecting to $H"
+    ssh -o ConnectTimeout=1 -o ConnectionAttempts=100 $H "$@"
+fi
