@@ -960,11 +960,13 @@ botic () {
 	${git} "${DIR}/patches/botic/0008-ASoC-mcasp-add-support-for-DSD-and-high-sampling.patch"
 	${git} "${DIR}/patches/botic/0009-add-botic-card-with-embedded-codec.patch"
 	${git} "${DIR}/patches/botic/0010-add-DTS-for-Botic-on-BBB.patch"
+	${git} "${DIR}/patches/botic/0011-ASoC-mcasp-support-the-DIT-daifmt.patch"
+	${git} "${DIR}/patches/botic/0012-ASoC-mcasp-disable-unnecessary-pins-for-DIT-DSD-play.patch"
 
 	cp -f "${DIR}/patches/botic_defconfig" arch/arm/configs/
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=10
+		number=12
 		cleanup
 	fi
 }
