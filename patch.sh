@@ -997,7 +997,7 @@ packaging () {
 		exit 2
 	else
 		${git} "${DIR}/patches/packaging/0001-packaging-sync-builddeb-changes.patch"
-		${git} "${DIR}/patches/packaging/0002-exclude-host-binaries-from-header-deb-package.patch"
+		${git} "${DIR}/patches/packaging/0002-fixup-kernel-headers-target-package.patch"
 	fi
 }
 

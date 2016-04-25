@@ -1,17 +1,26 @@
-From 28a7ab96d4a9fbc145c03476ba012b60490f9712 Mon Sep 17 00:00:00 2001
+From 876e36b5eb78113f0ba81aca804936137d26e908 Mon Sep 17 00:00:00 2001
 From: Miroslav Rudisin <miero@seznam.cz>
 Date: Sun, 17 Apr 2016 18:12:11 +0200
-Subject: [PATCH] exclude host binaries from header deb package
+Subject: [PATCH] fixup kernel headers target package
 
 ---
- scripts/package/builddeb | 40 ++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 40 insertions(+)
+ scripts/package/builddeb | 45 +++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 43 insertions(+), 2 deletions(-)
 
 diff --git a/scripts/package/builddeb b/scripts/package/builddeb
-index 5221d24..210fd62 100755
+index 5221d24..89d8b65 100755
 --- a/scripts/package/builddeb
 +++ b/scripts/package/builddeb
-@@ -337,6 +337,46 @@ fi
+@@ -331,12 +331,53 @@ fi
+ 
+ # Build kernel header package
+ (cd $srctree; find . -name Makefile\* -o -name Kconfig\* -o -name \*.pl) > "$objtree/debian/hdrsrcfiles"
+-(cd $srctree; find arch/$SRCARCH/include include scripts -type f) >> "$objtree/debian/hdrsrcfiles"
++(cd $srctree; find arch/$SRCARCH/include include scripts tools/include -type f -o -type l ) >> "$objtree/debian/hdrsrcfiles"
++(cd $srctree; find arch/$SRCARCH -name \*.dtsi ) >> "$objtree/debian/hdrsrcfiles"
+ (cd $srctree; find arch/$SRCARCH -name module.lds -o -name Kbuild.platforms -o -name Platform) >> "$objtree/debian/hdrsrcfiles"
+-(cd $srctree; find $(find arch/$SRCARCH -name include -o -name scripts -type d) -type f) >> "$objtree/debian/hdrsrcfiles"
++(cd $srctree; find $(find arch/$SRCARCH -name include -o -name scripts -type d) -type f -o -type l ) >> "$objtree/debian/hdrsrcfiles"
  (cd $objtree; find arch/$SRCARCH/include Module.symvers include scripts -type f) >> "$objtree/debian/hdrobjfiles"
  destdir=$kernel_headers_dir/usr/src/linux-headers-$version
  mkdir -p "$destdir"

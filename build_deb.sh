@@ -43,14 +43,14 @@ copy_defconfig () {
 	cd "${DIR}/KERNEL" || exit
 	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" distclean
 	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" "${config}"
-	cp -v .config "${DIR}/patches/ref_${config}"
+	cp -v .config "${DIR}/patches/${config}"
 	cd "${DIR}/" || exit
 }
 
 make_menuconfig () {
 	cd "${DIR}/KERNEL" || exit
 	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" menuconfig
-	cp -v .config "${DIR}/patches/defconfig"
+	cp -v .config "${DIR}/patches/${config}"
 	cd "${DIR}/" || exit
 }
 
