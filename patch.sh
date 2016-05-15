@@ -958,15 +958,14 @@ botic () {
 	${git} "${DIR}/patches/botic/0006-ASoC-mcasp-support-right-justified-TX-DAI-format.patch"
 	${git} "${DIR}/patches/botic/0007-ASoC-mcasp-allow-to-change-serializer-cfg.patch"
 	${git} "${DIR}/patches/botic/0008-ASoC-mcasp-add-support-for-DSD-and-high-sampling.patch"
-	${git} "${DIR}/patches/botic/0009-add-botic-card-with-embedded-codec.patch"
-	${git} "${DIR}/patches/botic/0010-add-DTS-for-Botic-on-BBB.patch"
 	${git} "${DIR}/patches/botic/0011-ASoC-mcasp-support-the-DIT-daifmt.patch"
 	${git} "${DIR}/patches/botic/0012-ASoC-mcasp-disable-unnecessary-pins-for-DIT-DSD-play.patch"
+	${git} "${DIR}/patches/botic/0013-botic-card-codec-and-sabre32-codec.patch"
 
 	cp -f "${DIR}/patches/botic_defconfig" arch/arm/configs/
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=12
+		number=13
 		cleanup
 	fi
 }
