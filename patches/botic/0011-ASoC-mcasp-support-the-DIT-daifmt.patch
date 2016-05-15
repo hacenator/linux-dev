@@ -1,4 +1,4 @@
-From 195287fd3da3b90005f6b23d9613ad16a4e87f0e Mon Sep 17 00:00:00 2001
+From 4d1f55d92c5bb5e325195f3865600db13a593b0c Mon Sep 17 00:00:00 2001
 From: Miroslav Rudisin <miero@seznam.cz>
 Date: Sun, 24 Apr 2016 16:09:30 +0200
 Subject: [PATCH] ASoC: mcasp: support the DIT daifmt
@@ -8,11 +8,11 @@ Subject: [PATCH] ASoC: mcasp: support the DIT daifmt
  1 file changed, 55 insertions(+), 15 deletions(-)
 
 diff --git a/sound/soc/davinci/davinci-mcasp.c b/sound/soc/davinci/davinci-mcasp.c
-index a4b9674..c6f0629 100644
+index 1061a85..11eb607 100644
 --- a/sound/soc/davinci/davinci-mcasp.c
 +++ b/sound/soc/davinci/davinci-mcasp.c
-@@ -400,6 +400,11 @@ static int davinci_mcasp_set_dai_fmt(struct snd_soc_dai *cpu_dai,
- 	bool inv_fs = false;
+@@ -404,6 +404,11 @@ static int davinci_mcasp_set_dai_fmt(struct snd_soc_dai *cpu_dai,
+ 		return 0;
  
  	pm_runtime_get_sync(mcasp->dev);
 +	if ((fmt & SND_SOC_DAIFMT_FORMAT_MASK) == SND_SOC_DAIFMT_DIT) {
@@ -23,7 +23,7 @@ index a4b9674..c6f0629 100644
  	mcasp->right_justified = false;
  	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
  	case SND_SOC_DAIFMT_DSP_A:
-@@ -542,6 +547,7 @@ static int __davinci_mcasp_set_clkdiv(struct snd_soc_dai *dai, int div_id,
+@@ -548,6 +553,7 @@ static int __davinci_mcasp_set_clkdiv(struct snd_soc_dai *dai, int div_id,
  				      int div, bool explicit)
  {
  	struct davinci_mcasp *mcasp = snd_soc_dai_get_drvdata(dai);
@@ -31,7 +31,7 @@ index a4b9674..c6f0629 100644
  
  	pm_runtime_get_sync(mcasp->dev);
  	switch (div_id) {
-@@ -553,6 +559,12 @@ static int __davinci_mcasp_set_clkdiv(struct snd_soc_dai *dai, int div_id,
+@@ -559,6 +565,12 @@ static int __davinci_mcasp_set_clkdiv(struct snd_soc_dai *dai, int div_id,
  		break;
  
  	case 1:		/* BCLK divider */
@@ -44,7 +44,7 @@ index a4b9674..c6f0629 100644
  		mcasp_mod_bits(mcasp, DAVINCI_MCASP_ACLKXCTL_REG,
  			       ACLKXDIV(div - 1), ACLKXDIV_MASK);
  		mcasp_mod_bits(mcasp, DAVINCI_MCASP_ACLKRCTL_REG,
-@@ -579,11 +591,12 @@ static int __davinci_mcasp_set_clkdiv(struct snd_soc_dai *dai, int div_id,
+@@ -585,11 +597,12 @@ static int __davinci_mcasp_set_clkdiv(struct snd_soc_dai *dai, int div_id,
  		break;
  
  	default:
@@ -59,7 +59,7 @@ index a4b9674..c6f0629 100644
  }
  
  static int davinci_mcasp_set_clkdiv(struct snd_soc_dai *dai, int div_id,
-@@ -711,6 +724,14 @@ static int davinci_config_channel_size(struct davinci_mcasp *mcasp,
+@@ -717,6 +730,14 @@ static int davinci_config_channel_size(struct davinci_mcasp *mcasp,
  	 */
  	u32 rx_rotate = 0;
  
@@ -74,7 +74,7 @@ index a4b9674..c6f0629 100644
  	/*
  	 * Setting the tdm slot width either with set_clkdiv() or
  	 * set_tdm_slot() allows us to for example send 32 bits per
-@@ -735,18 +756,21 @@ static int davinci_config_channel_size(struct davinci_mcasp *mcasp,
+@@ -741,18 +762,21 @@ static int davinci_config_channel_size(struct davinci_mcasp *mcasp,
  		/* TODO: RX? */
  	}
  
@@ -106,7 +106,7 @@ index a4b9674..c6f0629 100644
  	mcasp_set_reg(mcasp, DAVINCI_MCASP_TXMASK_REG, mask);
  
  	return 0;
-@@ -946,9 +970,15 @@ static int mcasp_i2s_hw_param(struct davinci_mcasp *mcasp, int stream,
+@@ -952,9 +976,15 @@ static int mcasp_i2s_hw_param(struct davinci_mcasp *mcasp, int stream,
  static int mcasp_dit_hw_param(struct davinci_mcasp *mcasp,
  			      unsigned int rate)
  {
@@ -122,7 +122,7 @@ index a4b9674..c6f0629 100644
  	/* Set the TX format : 24 bit right rotation, 32 bit slot, Pad 0
  	   and LSB first */
  	mcasp_set_bits(mcasp, DAVINCI_MCASP_TXFMT_REG, TXROT(6) | TXSSZ(15));
-@@ -964,9 +994,6 @@ static int mcasp_dit_hw_param(struct davinci_mcasp *mcasp,
+@@ -970,9 +1000,6 @@ static int mcasp_dit_hw_param(struct davinci_mcasp *mcasp,
  
  	mcasp_clr_bits(mcasp, DAVINCI_MCASP_XEVTCTL_REG, TXDATADMADIS);
  
@@ -132,7 +132,7 @@ index a4b9674..c6f0629 100644
  	/* Enable the DIT */
  	mcasp_set_bits(mcasp, DAVINCI_MCASP_TXDITCTL_REG, DITEN);
  
-@@ -2053,6 +2080,19 @@ static int davinci_mcasp_probe(struct platform_device *pdev)
+@@ -2065,6 +2092,19 @@ static int davinci_mcasp_probe(struct platform_device *pdev)
  		goto err;
  	}
  

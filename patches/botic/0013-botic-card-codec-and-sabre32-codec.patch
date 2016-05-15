@@ -1,20 +1,20 @@
-From 4e1ebe7676d811d02602d207586e720a893b7d39 Mon Sep 17 00:00:00 2001
+From 5bc0a77ea25bcafb6cdc12597a1b1c558b39b975 Mon Sep 17 00:00:00 2001
 From: Miroslav Rudisin <miero@seznam.cz>
 Date: Sun, 17 Apr 2016 09:49:11 +0200
 Subject: [PATCH] botic card, codec and sabre32 codec
 
 ---
  arch/arm/boot/dts/Makefile                         |   2 +
- .../boot/dts/am335x-boneblack-botic-sabre32.dts    | 147 ++++
- arch/arm/boot/dts/am335x-boneblack-botic.dts       | 146 ++++
- sound/soc/codecs/Kconfig                           |  10 +
+ .../boot/dts/am335x-boneblack-botic-sabre32.dts    | 167 ++++
+ arch/arm/boot/dts/am335x-boneblack-botic.dts       | 166 ++++
+ sound/soc/codecs/Kconfig                           |   9 +
  sound/soc/codecs/Makefile                          |   4 +
  sound/soc/codecs/botic-codec.c                     | 121 +++
  sound/soc/codecs/sabre32.c                         | 896 +++++++++++++++++++++
  sound/soc/generic/Kconfig                          |  14 +
  sound/soc/generic/Makefile                         |   2 +
  sound/soc/generic/botic-card.c                     | 629 +++++++++++++++
- 10 files changed, 1971 insertions(+)
+ 10 files changed, 2010 insertions(+)
  create mode 100644 arch/arm/boot/dts/am335x-boneblack-botic-sabre32.dts
  create mode 100644 arch/arm/boot/dts/am335x-boneblack-botic.dts
  create mode 100644 sound/soc/codecs/botic-codec.c
@@ -22,10 +22,10 @@ Subject: [PATCH] botic card, codec and sabre32 codec
  create mode 100644 sound/soc/generic/botic-card.c
 
 diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
-index 03f8f76..f6b27e6 100644
+index c0c4862..d83b3e0 100644
 --- a/arch/arm/boot/dts/Makefile
 +++ b/arch/arm/boot/dts/Makefile
-@@ -488,6 +488,8 @@ dtb-$(CONFIG_SOC_AM33XX) += \
+@@ -504,6 +504,8 @@ dtb-$(CONFIG_SOC_AM33XX) += \
  	am335x-boneblack-bbbmini.dtb \
  	am335x-boneblack-wl1835mod.dtb \
  	am335x-boneblack-cape-bone-argus.dtb \
@@ -36,10 +36,10 @@ index 03f8f76..f6b27e6 100644
  	am335x-bonegreen-wireless.dtb \
 diff --git a/arch/arm/boot/dts/am335x-boneblack-botic-sabre32.dts b/arch/arm/boot/dts/am335x-boneblack-botic-sabre32.dts
 new file mode 100644
-index 0000000..c9b0459
+index 0000000..ff7d70f
 --- /dev/null
 +++ b/arch/arm/boot/dts/am335x-boneblack-botic-sabre32.dts
-@@ -0,0 +1,147 @@
+@@ -0,0 +1,167 @@
 +/*
 + * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
 + *
@@ -78,6 +78,26 @@ index 0000000..c9b0459
 +
 +&rtc {
 +	system-power-controller;
++};
++
++/ {
++	cpus {
++		cpu@0 {
++			cpu0-supply = <&dcdc2_reg>;
++			/*
++			 * To consider voltage drop between PMIC and SoC,
++			 * tolerance value is reduced to 2% from 4% and
++			 * voltage value is increased as a precaution.
++			 */
++			operating-points = <
++				/* kHz    uV */
++				1000000	1325000
++				800000	1300000
++				600000	1112000
++				300000	969000
++			>;
++		};
++	};
 +};
 +
 +/ {
@@ -189,10 +209,10 @@ index 0000000..c9b0459
 +};
 diff --git a/arch/arm/boot/dts/am335x-boneblack-botic.dts b/arch/arm/boot/dts/am335x-boneblack-botic.dts
 new file mode 100644
-index 0000000..d06eec2
+index 0000000..59a6280
 --- /dev/null
 +++ b/arch/arm/boot/dts/am335x-boneblack-botic.dts
-@@ -0,0 +1,146 @@
+@@ -0,0 +1,166 @@
 +/*
 + * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
 + *
@@ -231,6 +251,26 @@ index 0000000..d06eec2
 +
 +&rtc {
 +	system-power-controller;
++};
++
++/ {
++	cpus {
++		cpu@0 {
++			cpu0-supply = <&dcdc2_reg>;
++			/*
++			 * To consider voltage drop between PMIC and SoC,
++			 * tolerance value is reduced to 2% from 4% and
++			 * voltage value is increased as a precaution.
++			 */
++			operating-points = <
++				/* kHz    uV */
++				1000000	1325000
++				800000	1300000
++				600000	1112000
++				300000	969000
++			>;
++		};
++	};
 +};
 +
 +/ {
@@ -340,7 +380,7 @@ index 0000000..d06eec2
 +	clock-frequency = <100000>;
 +};
 diff --git a/sound/soc/codecs/Kconfig b/sound/soc/codecs/Kconfig
-index 50693c8..0738efc 100644
+index 649e92a..209d1c0 100644
 --- a/sound/soc/codecs/Kconfig
 +++ b/sound/soc/codecs/Kconfig
 @@ -43,6 +43,7 @@ config SND_SOC_ALL_CODECS
@@ -351,29 +391,28 @@ index 50693c8..0738efc 100644
  	select SND_SOC_CQ0093VC if MFD_DAVINCI_VOICECODEC
  	select SND_SOC_CS35L32 if I2C
  	select SND_SOC_CS42L51_I2C if I2C
-@@ -187,6 +188,7 @@ config SND_SOC_ALL_CODECS
- 	select SND_SOC_WM9705 if SND_SOC_AC97_BUS
- 	select SND_SOC_WM9712 if SND_SOC_AC97_BUS
- 	select SND_SOC_WM9713 if SND_SOC_AC97_BUS
+@@ -107,6 +108,7 @@ config SND_SOC_ALL_CODECS
+ 	select SND_SOC_RT5659 if I2C
+ 	select SND_SOC_RT5670 if I2C
+ 	select SND_SOC_RT5677 if I2C && SPI_MASTER
 +	select SND_SOC_SABRE32 if I2C
-         help
-           Normally ASoC codec drivers are only built if a machine driver which
-           uses them is also built since they are only usable with a machine
-@@ -361,6 +363,9 @@ config SND_SOC_ALC5623
+ 	select SND_SOC_SGTL5000 if I2C
+ 	select SND_SOC_SI476X if MFD_SI476X_CORE
+ 	select SND_SOC_SIRF_AUDIO_CODEC
+@@ -365,6 +367,9 @@ config SND_SOC_ALC5623
  config SND_SOC_ALC5632
  	tristate
  
 +config SND_SOC_BOTIC_CODEC
-+	tristate
++	tristate "Botic CODEC"
 +
  config SND_SOC_CQ0093VC
  	tristate
  
-@@ -626,6 +631,11 @@ config SND_SOC_RT5677_SPI
+@@ -658,6 +663,10 @@ config SND_SOC_RT5677_SPI
  	tristate
  	default SND_SOC_RT5677 && SPI
  
-+
 +config SND_SOC_SABRE32
 +	tristate "ESS Technology Sabre32 DAC"
 +	depends on I2C
@@ -382,7 +421,7 @@ index 50693c8..0738efc 100644
  config SND_SOC_SGTL5000
  	tristate "Freescale SGTL5000 CODEC"
 diff --git a/sound/soc/codecs/Makefile b/sound/soc/codecs/Makefile
-index d44f7d3..ede181e 100644
+index 185a712..25bd324 100644
 --- a/sound/soc/codecs/Makefile
 +++ b/sound/soc/codecs/Makefile
 @@ -32,6 +32,7 @@ snd-soc-ak4642-objs := ak4642.o
@@ -393,7 +432,7 @@ index d44f7d3..ede181e 100644
  snd-soc-cq93vc-objs := cq93vc.o
  snd-soc-cs35l32-objs := cs35l32.o
  snd-soc-cs42l51-objs := cs42l51.o
-@@ -101,6 +102,7 @@ snd-soc-rt5659-objs := rt5659.o
+@@ -106,6 +107,7 @@ snd-soc-rt5659-objs := rt5659.o
  snd-soc-rt5670-objs := rt5670.o
  snd-soc-rt5677-objs := rt5677.o
  snd-soc-rt5677-spi-objs := rt5677-spi.o
@@ -401,7 +440,7 @@ index d44f7d3..ede181e 100644
  snd-soc-sgtl5000-objs := sgtl5000.o
  snd-soc-alc5623-objs := alc5623.o
  snd-soc-alc5632-objs := alc5632.o
-@@ -236,6 +238,7 @@ obj-$(CONFIG_SND_SOC_AK5386)	+= snd-soc-ak5386.o
+@@ -241,6 +243,7 @@ obj-$(CONFIG_SND_SOC_AK5386)	+= snd-soc-ak5386.o
  obj-$(CONFIG_SND_SOC_ALC5623)    += snd-soc-alc5623.o
  obj-$(CONFIG_SND_SOC_ALC5632)	+= snd-soc-alc5632.o
  obj-$(CONFIG_SND_SOC_ARIZONA)	+= snd-soc-arizona.o
@@ -409,7 +448,7 @@ index d44f7d3..ede181e 100644
  obj-$(CONFIG_SND_SOC_CQ0093VC) += snd-soc-cq93vc.o
  obj-$(CONFIG_SND_SOC_CS35L32)	+= snd-soc-cs35l32.o
  obj-$(CONFIG_SND_SOC_CS42L51)	+= snd-soc-cs42l51.o
-@@ -305,6 +308,7 @@ obj-$(CONFIG_SND_SOC_RT5659)	+= snd-soc-rt5659.o
+@@ -315,6 +318,7 @@ obj-$(CONFIG_SND_SOC_RT5659)	+= snd-soc-rt5659.o
  obj-$(CONFIG_SND_SOC_RT5670)	+= snd-soc-rt5670.o
  obj-$(CONFIG_SND_SOC_RT5677)	+= snd-soc-rt5677.o
  obj-$(CONFIG_SND_SOC_RT5677_SPI)	+= snd-soc-rt5677-spi.o

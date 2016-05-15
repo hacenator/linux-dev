@@ -1,4 +1,4 @@
-From b57ad8c9f29fba696e50c8f831c8be22721f559b Mon Sep 17 00:00:00 2001
+From 58a2a1170a03adc8744f87d228e0980800f10ec7 Mon Sep 17 00:00:00 2001
 From: Miroslav Rudisin <miero@seznam.cz>
 Date: Sun, 6 Mar 2016 15:03:30 +0100
 Subject: [PATCH] ASoC: mcasp: add support for DSD and high sampling
@@ -8,10 +8,10 @@ Subject: [PATCH] ASoC: mcasp: add support for DSD and high sampling
  1 file changed, 60 insertions(+), 10 deletions(-)
 
 diff --git a/sound/soc/davinci/davinci-mcasp.c b/sound/soc/davinci/davinci-mcasp.c
-index d092256..a4b9674 100644
+index ec96670..1061a85 100644
 --- a/sound/soc/davinci/davinci-mcasp.c
 +++ b/sound/soc/davinci/davinci-mcasp.c
-@@ -753,13 +753,13 @@ static int davinci_config_channel_size(struct davinci_mcasp *mcasp,
+@@ -759,13 +759,13 @@ static int davinci_config_channel_size(struct davinci_mcasp *mcasp,
  }
  
  static int mcasp_common_hw_param(struct davinci_mcasp *mcasp, int stream,
@@ -27,7 +27,7 @@ index d092256..a4b9674 100644
  	u8 max_active_serializers = (channels + slots - 1) / slots;
  	int active_serializers, numevt;
  	u32 reg;
-@@ -862,13 +862,14 @@ static int mcasp_common_hw_param(struct davinci_mcasp *mcasp, int stream,
+@@ -868,13 +868,14 @@ static int mcasp_common_hw_param(struct davinci_mcasp *mcasp, int stream,
  }
  
  static int mcasp_i2s_hw_param(struct davinci_mcasp *mcasp, int stream,
@@ -43,7 +43,7 @@ index d092256..a4b9674 100644
  
  	total_slots = mcasp->tdm_slots;
  
-@@ -907,16 +908,24 @@ static int mcasp_i2s_hw_param(struct davinci_mcasp *mcasp, int stream,
+@@ -913,16 +914,24 @@ static int mcasp_i2s_hw_param(struct davinci_mcasp *mcasp, int stream,
  	if (!mcasp->dat_port)
  		busel = TXSEL;
  
@@ -70,7 +70,7 @@ index d092256..a4b9674 100644
  		/*
  		 * If McASP is set to be TX/RX synchronous and the playback is
  		 * not running already we need to configure the TX slots in
-@@ -924,9 +933,12 @@ static int mcasp_i2s_hw_param(struct davinci_mcasp *mcasp, int stream,
+@@ -930,9 +939,12 @@ static int mcasp_i2s_hw_param(struct davinci_mcasp *mcasp, int stream,
  		 */
  		if (mcasp_is_synchronous(mcasp) && !mcasp->channels)
  			mcasp_mod_bits(mcasp, DAVINCI_MCASP_TXFMCTL_REG,
@@ -84,7 +84,7 @@ index d092256..a4b9674 100644
  	return 0;
  }
  
-@@ -1025,16 +1037,37 @@ static int davinci_mcasp_calc_clk_div(struct davinci_mcasp *mcasp,
+@@ -1031,16 +1043,37 @@ static int davinci_mcasp_calc_clk_div(struct davinci_mcasp *mcasp,
  	return div;
  }
  
@@ -119,10 +119,10 @@ index d092256..a4b9674 100644
 +	if (dsd_mode && mcasp->op_mode == DAVINCI_MCASP_DIT_MODE)
 +		return -EINVAL;
 +
- 	/*
- 	 * If mcasp is BCLK master, and a BCLK divider was not provided by
- 	 * the machine driver, we need to calculate the ratio.
-@@ -1058,7 +1091,7 @@ static int davinci_mcasp_hw_params(struct snd_pcm_substream *substream,
+ 	ret = davinci_mcasp_set_dai_fmt(cpu_dai, mcasp->dai_fmt);
+ 	if (ret)
+ 		return ret;
+@@ -1068,7 +1101,7 @@ static int davinci_mcasp_hw_params(struct snd_pcm_substream *substream,
  	}
  
  	ret = mcasp_common_hw_param(mcasp, substream->stream,
@@ -131,7 +131,7 @@ index d092256..a4b9674 100644
  	if (ret)
  		return ret;
  
-@@ -1066,7 +1099,7 @@ static int davinci_mcasp_hw_params(struct snd_pcm_substream *substream,
+@@ -1076,7 +1109,7 @@ static int davinci_mcasp_hw_params(struct snd_pcm_substream *substream,
  		ret = mcasp_dit_hw_param(mcasp, params_rate(params));
  	else
  		ret = mcasp_i2s_hw_param(mcasp, substream->stream,
@@ -140,7 +140,7 @@ index d092256..a4b9674 100644
  
  	if (ret)
  		return ret;
-@@ -1097,6 +1130,20 @@ static int davinci_mcasp_hw_params(struct snd_pcm_substream *substream,
+@@ -1107,6 +1140,20 @@ static int davinci_mcasp_hw_params(struct snd_pcm_substream *substream,
  		word_length = 32;
  		break;
  
@@ -161,7 +161,7 @@ index d092256..a4b9674 100644
  	default:
  		printk(KERN_WARNING "davinci-mcasp: unsupported PCM format");
  		return -EINVAL;
-@@ -1465,7 +1512,7 @@ static int davinci_mcasp_resume(struct snd_soc_dai *dai)
+@@ -1475,7 +1522,7 @@ static int davinci_mcasp_resume(struct snd_soc_dai *dai)
  #define davinci_mcasp_resume NULL
  #endif
  
@@ -170,7 +170,7 @@ index d092256..a4b9674 100644
  
  #define DAVINCI_MCASP_PCM_FMTS (SNDRV_PCM_FMTBIT_S8 | \
  				SNDRV_PCM_FMTBIT_U8 | \
-@@ -1476,7 +1523,10 @@ static int davinci_mcasp_resume(struct snd_soc_dai *dai)
+@@ -1486,7 +1533,10 @@ static int davinci_mcasp_resume(struct snd_soc_dai *dai)
  				SNDRV_PCM_FMTBIT_S24_3LE | \
  				SNDRV_PCM_FMTBIT_U24_3LE | \
  				SNDRV_PCM_FMTBIT_S32_LE | \

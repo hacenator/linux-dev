@@ -21,7 +21,7 @@
 # THE SOFTWARE.
 
 H=root@botic
-DTB=am335x-boneblack-botic.dtb
+DTB=am335x-boneblack-botic-sabre32.dtb
 
 MODE=kexec
 #MODE=tftp
