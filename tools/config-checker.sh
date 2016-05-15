@@ -132,21 +132,13 @@ config="CONFIG_XEN" ; config_disable
 #
 # CPU Frequency scaling
 #
-config="CONFIG_CPU_FREQ_STAT" ; config_enable
 config="CONFIG_CPU_FREQ_STAT_DETAILS" ; config_enable
-config="CONFIG_CPU_FREQ_GOV_POWERSAVE" ; config_enable
-config="CONFIG_CPU_FREQ_GOV_USERSPACE" ; config_enable
-config="CONFIG_CPU_FREQ_GOV_ONDEMAND" ; config_enable
-config="CONFIG_CPU_FREQ_GOV_CONSERVATIVE" ; config_enable
 
 #
 # CPU frequency scaling drivers
 #
-config="CONFIG_CPUFREQ_DT" ; config_enable
-config="CONFIG_ARM_IMX6Q_CPUFREQ" ; config_enable
 config="CONFIG_ARM_OMAP2PLUS_CPUFREQ" ; config_disable
-config="CONFIG_ARM_TEGRA124_CPUFREQ" ; config_enable
-config="CONFIG_QORIQ_CPUFREQ" ; config_enable
+config="CONFIG_QORIQ_CPUFREQ" ; config_module
 
 #
 # CPU Idle
@@ -335,6 +327,7 @@ config="CONFIG_TI_CPTS" ; config_enable
 #
 # MII PHY device drivers
 #
+config="CONFIG_VITESSE_PHY" ; config_enable
 config="CONFIG_SMSC_PHY" ; config_enable
 config="CONFIG_MICREL_PHY" ; config_enable
 config="CONFIG_DP83848_PHY" ; config_enable
@@ -342,12 +335,6 @@ config="CONFIG_DP83848_PHY" ; config_enable
 #
 # USB Network Adapters
 #
-config="CONFIG_USB_LAN78XX" ; config_module
-config="CONFIG_USB_NET_CH9200" ; config_module
-config="CONFIG_LIBERTAS_SPI" ; config_module
-config="CONFIG_MWIFIEX" ; config_module
-config="CONFIG_MWIFIEX_SDIO" ; config_module
-config="CONFIG_MWIFIEX_USB" ; config_module
 config="CONFIG_RTL8XXXU" ; config_module
 config="CONFIG_USB_ZD1201" ; config_module
 
@@ -461,6 +448,7 @@ config="CONFIG_INPUT_E3X0_BUTTON" ; config_module
 config="CONFIG_INPUT_MC13783_PWRBUTTON" ; config_module
 config="CONFIG_INPUT_MPU3050" ; config_module
 config="CONFIG_INPUT_GP2A" ; config_module
+config="CONFIG_INPUT_GPIO_BEEPER" ; config_module
 config="CONFIG_INPUT_GPIO_TILT_POLLED" ; config_module
 config="CONFIG_INPUT_KXTJ9" ; config_module
 config="CONFIG_INPUT_KXTJ9_POLLED_MODE" ; config_enable
@@ -473,6 +461,7 @@ config="CONFIG_INPUT_TWL6040_VIBRA" ; config_enable
 config="CONFIG_INPUT_UINPUT" ; config_enable
 config="CONFIG_INPUT_PALMAS_PWRBUTTON" ; config_enable
 config="CONFIG_INPUT_PCF8574" ; config_module
+config="CONFIG_INPUT_PWM_BEEPER" ; config_module
 config="CONFIG_INPUT_GPIO_ROTARY_ENCODER" ; config_module
 config="CONFIG_INPUT_DA9052_ONKEY" ; config_module
 config="CONFIG_INPUT_DA9055_ONKEY" ; config_module
@@ -482,8 +471,9 @@ config="CONFIG_INPUT_ADXL34X_SPI" ; config_module
 config="CONFIG_INPUT_IMS_PCU" ; config_module
 config="CONFIG_INPUT_CMA3000" ; config_module
 config="CONFIG_INPUT_CMA3000_I2C" ; config_module
-
+config="CONFIG_INPUT_SOC_BUTTON_ARRAY" ; config_module
 config="CONFIG_INPUT_DRV260X_HAPTICS" ; config_module
+config="CONFIG_INPUT_DRV2665_HAPTICS" ; config_module
 config="CONFIG_INPUT_DRV2667_HAPTICS" ; config_module
 
 #exit
@@ -499,13 +489,13 @@ config="CONFIG_DEVKMEM" ; config_enable
 config="CONFIG_SERIAL_8250_DMA" ; config_disable
 config="CONFIG_SERIAL_8250_NR_UARTS" ; option="6" ; config_value
 config="CONFIG_SERIAL_8250_RUNTIME_UARTS" ; option="6" ; config_value
-config="CONFIG_SERIAL_8250_OMAP" ; config_disable
-#config="CONFIG_SERIAL_8250_OMAP_TTYO_FIXUP" ; config_enable
+config="CONFIG_SERIAL_8250_OMAP" ; config_enable
+config="CONFIG_SERIAL_8250_OMAP_TTYO_FIXUP" ; config_enable
 
 #
 # Non-8250 serial port support
 #
-#config="CONFIG_SERIAL_OMAP" ; config_disable
+config="CONFIG_SERIAL_OMAP" ; config_disable
 
 config="CONFIG_SERIAL_ARC" ; config_disable
 config="CONFIG_SERIAL_FSL_LPUART" ; config_enable
@@ -554,6 +544,7 @@ config="CONFIG_SPI_SPIDEV" ; config_module
 #
 # PPS clients support
 #
+config="CONFIG_NTP_PPS" ; config_enable
 config="CONFIG_PPS_CLIENT_GPIO" ; config_module
 
 #
@@ -578,6 +569,7 @@ config="CONFIG_GPIO_PCA953X" ; config_enable
 config="CONFIG_GPIO_PCA953X_IRQ" ; config_enable
 config="CONFIG_GPIO_PCF857X" ; config_module
 config="CONFIG_GPIO_SX150X" ; config_enable
+config="CONFIG_GPIO_TPIC2810" ; config_module
 
 #
 # MFD GPIO expanders
@@ -592,8 +584,13 @@ config="CONFIG_GPIO_TPS65910" ; config_enable
 #
 config="CONFIG_GPIO_74X164" ; config_module
 config="CONFIG_GPIO_MAX7301" ; config_module
-config="CONFIG_GPIO_MCP23S08" ; config_module
 config="CONFIG_GPIO_MC33880" ; config_module
+config="CONFIG_GPIO_PISOSR" ; config_module
+
+#
+# SPI or I2C GPIO expanders
+#
+config="CONFIG_GPIO_MCP23S08" ; config_module
 
 #
 # 1-wire Bus Masters
@@ -652,6 +649,7 @@ config="CONFIG_SENSORS_IIO_HWMON" ; config_module
 config="CONFIG_SENSORS_IT87" ; config_module
 config="CONFIG_SENSORS_POWR1220" ; config_module
 config="CONFIG_SENSORS_LTC2945" ; config_module
+config="CONFIG_SENSORS_LTC2990" ; config_module
 config="CONFIG_SENSORS_LTC4222" ; config_module
 config="CONFIG_SENSORS_LTC4260" ; config_module
 config="CONFIG_SENSORS_MAX1619" ; config_module
@@ -682,6 +680,7 @@ config="CONFIG_SENSORS_ADM1275" ; config_module
 config="CONFIG_SENSORS_LM25066" ; config_module
 config="CONFIG_SENSORS_LTC2978" ; config_module
 config="CONFIG_SENSORS_LTC2978_REGULATOR" ; config_enable
+config="CONFIG_SENSORS_LTC3815" ; config_module
 config="CONFIG_SENSORS_MAX16064" ; config_module
 config="CONFIG_SENSORS_MAX20751" ; config_module
 config="CONFIG_SENSORS_MAX34440" ; config_module
@@ -693,12 +692,14 @@ config="CONFIG_SENSORS_ZL6100" ; config_module
 config="CONFIG_SENSORS_PWM_FAN" ; config_module
 config="CONFIG_SENSORS_SHT15" ; config_module
 config="CONFIG_SENSORS_SHTC1" ; config_module
+config="CONFIG_SENSORS_SIS5595" ; config_module
 config="CONFIG_SENSORS_SMSC47M1" ; config_module
 config="CONFIG_SENSORS_SMSC47B397" ; config_module
 config="CONFIG_SENSORS_SCH5636" ; config_module
 config="CONFIG_SENSORS_ADC128D818" ; config_module
 config="CONFIG_SENSORS_INA209" ; config_module
 config="CONFIG_SENSORS_INA2XX" ; config_module
+config="CONFIG_SENSORS_TC74" ; config_module
 config="CONFIG_SENSORS_TMP103" ; config_module
 config="CONFIG_SENSORS_TWL4030_MADC" ; config_module
 config="CONFIG_SENSORS_W83781D" ; config_module
@@ -994,6 +995,8 @@ config="CONFIG_USB_ETH_EEM" ; config_disable
 config="CONFIG_USB_GADGETFS" ; config_disable
 config="CONFIG_USB_G_NOKIA" ; config_disable
 
+#exit
+
 #
 # MMC/SD/SDIO Card Drivers
 #
@@ -1029,6 +1032,7 @@ config="CONFIG_LEDS_PCA963X" ; config_module
 config="CONFIG_LEDS_TCA6507" ; config_module
 config="CONFIG_LEDS_TLC591XX" ; config_module
 config="CONFIG_LEDS_LM355x" ; config_module
+config="CONFIG_LEDS_IS31FL32XX" ; config_module
 
 #
 # LED Triggers
@@ -1043,6 +1047,8 @@ config="CONFIG_LEDS_TRIGGER_DEFAULT_ON" ; config_enable
 #
 # I2C RTC drivers
 #
+config="CONFIG_RTC_DRV_ABB5ZES3" ; config_module
+config="CONFIG_RTC_DRV_ABX80X" ; config_module
 config="CONFIG_RTC_DRV_DS1374" ; config_module
 config="CONFIG_RTC_DRV_DS1374_WDT" ; config_enable
 config="CONFIG_RTC_DRV_DS1672" ; config_module
@@ -1062,6 +1068,7 @@ config="CONFIG_RTC_DRV_BQ32K" ; config_module
 config="CONFIG_RTC_DRV_TPS65910" ; config_module
 config="CONFIG_RTC_DRV_S35390A" ; config_module
 config="CONFIG_RTC_DRV_FM3130" ; config_module
+config="CONFIG_RTC_DRV_RX8010" ; config_module
 config="CONFIG_RTC_DRV_RX8581" ; config_module
 config="CONFIG_RTC_DRV_RX8025" ; config_module
 config="CONFIG_RTC_DRV_EM3027" ; config_module
@@ -1079,6 +1086,7 @@ config="CONFIG_RTC_DRV_DS1347" ; config_module
 config="CONFIG_RTC_DRV_DS1390" ; config_module
 config="CONFIG_RTC_DRV_MAX6902" ; config_module
 config="CONFIG_RTC_DRV_R9701" ; config_module
+config="CONFIG_RTC_DRV_RX6110" ; config_module
 config="CONFIG_RTC_DRV_RS5C348" ; config_module
 config="CONFIG_RTC_DRV_DS3234" ; config_module
 config="CONFIG_RTC_DRV_PCF2123" ; config_module
@@ -1104,6 +1112,8 @@ config="CONFIG_RTC_DRV_BQ4802" ; config_module
 config="CONFIG_RTC_DRV_RP5C01" ; config_module
 config="CONFIG_RTC_DRV_V3020" ; config_module
 config="CONFIG_RTC_DRV_DS2404" ; config_module
+
+#exit
 
 #
 # on-CPU RTC drivers
@@ -1161,6 +1171,8 @@ config="CONFIG_AD7780" ; config_module
 config="CONFIG_AD7816" ; config_module
 config="CONFIG_AD7192" ; config_module
 config="CONFIG_AD7280" ; config_module
+
+#exit
 
 #
 # Analog digital bi-direction converters
@@ -1225,6 +1237,8 @@ config="CONFIG_AD2S90" ; config_module
 config="CONFIG_AD2S1200" ; config_module
 config="CONFIG_AD2S1210" ; config_module
 
+#exit
+
 #
 # Android
 #
@@ -1253,7 +1267,9 @@ config="CONFIG_FB_TFT_RA8875" ; config_module
 config="CONFIG_FB_TFT_S6D02A1" ; config_module
 config="CONFIG_FB_TFT_S6D1121" ; config_module
 config="CONFIG_FB_TFT_SSD1289" ; config_module
+config="CONFIG_FB_TFT_SSD1305" ; config_module
 config="CONFIG_FB_TFT_SSD1306" ; config_module
+config="CONFIG_FB_TFT_SSD1325" ; config_module
 config="CONFIG_FB_TFT_SSD1331" ; config_module
 config="CONFIG_FB_TFT_SSD1351" ; config_module
 config="CONFIG_FB_TFT_ST7735R" ; config_module
@@ -1288,8 +1304,8 @@ config="CONFIG_ARM_SMMU" ; config_enable
 #
 # Remoteproc drivers
 #
-config="CONFIG_REMOTEPROC" ; config_enable
-config="CONFIG_OMAP_REMOTEPROC" ; config_enable
+config="CONFIG_REMOTEPROC" ; config_module
+config="CONFIG_OMAP_REMOTEPROC" ; config_module
 config="CONFIG_WKUP_M3_RPROC" ; config_enable
 
 #
@@ -1371,7 +1387,9 @@ config="CONFIG_MCP3422" ; config_module
 config="CONFIG_NAU7802" ; config_module
 config="CONFIG_PALMAS_GPADC" ; config_module
 config="CONFIG_TI_ADC081C" ; config_module
+config="CONFIG_TI_ADC0832" ; config_module
 config="CONFIG_TI_ADC128S052" ; config_module
+config="CONFIG_TI_ADS1015" ; config_module
 config="CONFIG_TI_ADS8688" ; config_module
 config="CONFIG_TWL6030_GPADC" ; config_module
 config="CONFIG_VF610_ADC" ; config_module
@@ -1384,7 +1402,14 @@ config="CONFIG_AD8366" ; config_module
 #
 # Chemical Sensors
 #
+config="CONFIG_ATLAS_PH_SENSOR" ; config_module
+config="CONFIG_IAQCORE" ; config_module
 config="CONFIG_VZ89X" ; config_module
+
+#
+# Hid Sensor IIO Common
+#
+config="CONFIG_IIO_MS_SENSORS_I2C" ; config_module
 
 #
 # SSP Sensor Common
@@ -1404,6 +1429,7 @@ config="CONFIG_AD5504" ; config_module
 config="CONFIG_AD5624R_SPI" ; config_module
 config="CONFIG_AD5686" ; config_module
 config="CONFIG_AD5755" ; config_module
+config="CONFIG_AD5761" ; config_module
 config="CONFIG_AD5764" ; config_module
 config="CONFIG_AD5791" ; config_module
 config="CONFIG_AD7303" ; config_module
@@ -1412,6 +1438,7 @@ config="CONFIG_MAX517" ; config_module
 config="CONFIG_MAX5821" ; config_module
 config="CONFIG_MCP4725" ; config_module
 config="CONFIG_MCP4922" ; config_module
+config="CONFIG_VF610_DAC" ; config_module
 
 #
 # Clock Generator/Distribution
@@ -1440,6 +1467,12 @@ config="CONFIG_ITG3200" ; config_module
 #
 # Health sensors
 #
+
+#
+# Heart Rate Monitors
+#
+config="CONFIG_AFE4403" ; config_module
+config="CONFIG_AFE4404" ; config_module
 config="CONFIG_MAX30100" ; config_module
 
 #
@@ -1457,6 +1490,8 @@ config="CONFIG_SI7020" ; config_module
 config="CONFIG_ADIS16400" ; config_module
 config="CONFIG_ADIS16480" ; config_module
 config="CONFIG_KMX61" ; config_module
+config="CONFIG_INV_MPU6050_I2C" ; config_module
+config="CONFIG_INV_MPU6050_SPI" ; config_module
 config="CONFIG_INV_MPU6050_IIO" ; config_module
 
 #
@@ -1507,11 +1542,14 @@ config="CONFIG_IIO_SYSFS_TRIGGER" ; config_module
 # Digital potentiometers
 #
 config="CONFIG_MCP4531" ; config_module
+config="CONFIG_TPL0102" ; config_module
 
 #
 # Pressure sensors
 #
 config="CONFIG_BMP280" ; config_module
+config="CONFIG_MPL115_I2C" ; config_module
+config="CONFIG_MPL115_SPI" ; config_module
 config="CONFIG_MPL115" ; config_module
 config="CONFIG_MPL3115" ; config_module
 config="CONFIG_MS5611" ; config_module
