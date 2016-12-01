@@ -21,7 +21,7 @@
 # THE SOFTWARE.
 
 DIR=$PWD
-CORES=$(getconf _NPROCESSORS_ONLN)
+CORES=${CORES:-$(getconf _NPROCESSORS_ONLN)}
 git_bin=$(which git)
 
 mkdir -p "${DIR}/deploy/"
@@ -96,8 +96,8 @@ flash_kernel_db () {
 copy_defconfig () {
 	cd "${DIR}/KERNEL" || exit
 	if [ ! -f "${DIR}/.yakbuild" ] ; then
-		make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" "${config}"
-		cp -v "${DIR}/patches/defconfig" .config
+		cp -v "${DIR}/patches/${config}" .config
+		make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" oldconfig
 	else
 		make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" rcn-ee_defconfig
 	fi
@@ -108,7 +108,7 @@ make_menuconfig () {
 	cd "${DIR}/KERNEL" || exit
 	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" menuconfig
 	if [ ! -f "${DIR}/.yakbuild" ] ; then
-		cp -v .config "${DIR}/patches/defconfig"
+		cp -v .config "${DIR}/patches/${config}"
 	fi
 	cd "${DIR}/" || exit
 }
@@ -142,6 +142,12 @@ make_kernel () {
 	fi
 
 	KERNEL_UTS=$(cat "${DIR}/KERNEL/include/generated/utsrelease.h" | awk '{print $3}' | sed 's/\"//g' )
+
+	if [ "${FAST_REBUILD}" ]; then
+		echo "${KERNEL_UTS}" > "${DIR}/kernel_version"
+		echo "Fast rebuild DONE."
+		exit
+	fi
 
 	if [ -f "${DIR}/deploy/${KERNEL_UTS}.${image}" ] ; then
 		rm -rf "${DIR}/deploy/${KERNEL_UTS}.${image}" || true
@@ -235,7 +241,10 @@ if [  -f "${DIR}/.yakbuild" ] ; then
 	fi
 fi
 
-/bin/sh -e "${DIR}/tools/host_det.sh" || { exit 1 ; }
+FAST_REBUILD=$1
+if [ ! "${FAST_REBUILD}" ]; then
+	/bin/sh -e "${DIR}/tools/host_det.sh" || { exit 1 ; }
+fi
 
 if [ ! -f "${DIR}/system.sh" ] ; then
 	cp -v "${DIR}/system.sh.sample" "${DIR}/system.sh"
@@ -280,7 +289,18 @@ fi
 export LINUX_GIT
 
 #unset FULL_REBUILD
-FULL_REBUILD=1
+if [ "${FULL_REBUILD}" -o ! "${FAST_REBUILD}" ]; then
+	echo "Full rebuild will start in 10 seconds..."
+	sleep 10
+	FULL_REBUILD=1
+elif [ "${FAST_REBUILD}" = 0 ]; then
+	FULL_REBUILD=
+	AUTO_BUILD=
+else
+	FULL_REBUILD=
+	AUTO_BUILD=1
+fi
+
 if [ "${FULL_REBUILD}" ] ; then
 	/bin/sh -e "${DIR}/scripts/git.sh" || { exit 1 ; }
 	cp -v "${DIR}/KERNEL/scripts/package/builddeb" "${DIR}/3rdparty/packaging/"
@@ -294,7 +314,8 @@ if [ "${FULL_REBUILD}" ] ; then
 		patch_kernel
 	fi
 	if [ ! "${AUTO_BUILD}" ] ; then
-		config_comparsion
+		## No config comparsion for Botic
+		false && config_comparsion
 		flash_kernel_db
 	fi
 	copy_defconfig

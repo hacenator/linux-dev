@@ -1,0 +1,2153 @@
+From 8cd07ba2105ecc5c4b0a86929fee16f89734eb44 Mon Sep 17 00:00:00 2001
+From: Miroslav Rudisin <miero@seznam.cz>
+Date: Wed, 30 Nov 2016 22:46:19 +0100
+Subject: [PATCH] botic card, codec and sabre32 codec
+
+---
+ arch/arm/boot/dts/Makefile                         |   2 +
+ .../boot/dts/am335x-boneblack-botic-sabre32.dts    | 162 ++++
+ arch/arm/boot/dts/am335x-boneblack-botic.dts       | 161 ++++
+ sound/soc/codecs/Kconfig                           |   9 +
+ sound/soc/codecs/Makefile                          |   4 +
+ sound/soc/codecs/botic-codec.c                     | 123 +++
+ sound/soc/codecs/sabre32.c                         | 898 +++++++++++++++++++++
+ sound/soc/generic/Kconfig                          |  14 +
+ sound/soc/generic/Makefile                         |   2 +
+ sound/soc/generic/botic-card.c                     | 629 +++++++++++++++
+ 10 files changed, 2004 insertions(+)
+ create mode 100644 arch/arm/boot/dts/am335x-boneblack-botic-sabre32.dts
+ create mode 100644 arch/arm/boot/dts/am335x-boneblack-botic.dts
+ create mode 100644 sound/soc/codecs/botic-codec.c
+ create mode 100644 sound/soc/codecs/sabre32.c
+ create mode 100644 sound/soc/generic/botic-card.c
+
+diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
+index eaf585d..7d6ec34 100644
+--- a/arch/arm/boot/dts/Makefile
++++ b/arch/arm/boot/dts/Makefile
+@@ -552,6 +552,8 @@ dtb-$(CONFIG_SOC_AM33XX) += \
+ 	am335x-boneblack-wl1835mod.dtb \
+ 	am335x-boneblack-cape-bone-argus.dtb \
+ 	am335x-bone-cape-bone-argus.dtb \
++	am335x-boneblack-botic.dtb \
++	am335x-boneblack-botic-sabre32.dtb \
+ 	am335x-arduino-tre.dtb \
+ 	am335x-bonegreen-wireless.dtb \
+ 	am335x-olimex-som.dtb \
+diff --git a/arch/arm/boot/dts/am335x-boneblack-botic-sabre32.dts b/arch/arm/boot/dts/am335x-boneblack-botic-sabre32.dts
+new file mode 100644
+index 0000000..ec9b3bdd
+--- /dev/null
++++ b/arch/arm/boot/dts/am335x-boneblack-botic-sabre32.dts
+@@ -0,0 +1,162 @@
++/*
++ * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++/dts-v1/;
++
++#include "am33xx.dtsi"
++#include "am335x-bone-common-no-capemgr.dtsi"
++
++/ {
++	model = "TI AM335x BeagleBone Black";
++	compatible = "ti,am335x-bone-black", "ti,am335x-bone", "ti,am33xx";
++};
++
++&ldo3_reg {
++	regulator-min-microvolt = <1800000>;
++	regulator-max-microvolt = <1800000>;
++	regulator-always-on;
++};
++
++&mmc1 {
++	vmmc-supply = <&vmmcsd_fixed>;
++};
++
++&mmc2 {
++	vmmc-supply = <&vmmcsd_fixed>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&emmc_pins>;
++	bus-width = <8>;
++	status = "okay";
++};
++
++/ {
++	cpus {
++		cpu@0 {
++			cpu0-supply = <&dcdc2_reg>;
++			/*
++			 * To consider voltage drop between PMIC and SoC,
++			 * tolerance value is reduced to 2% from 4% and
++			 * voltage value is increased as a precaution.
++			 */
++			operating-points = <
++				/* kHz    uV */
++				1000000	1325000
++				800000	1300000
++				600000	1112000
++				300000	969000
++			>;
++		};
++	};
++};
++
++/ {
++	sabre32_codec: sabre32_codec {
++		compatible = "sabre32-audio-codec";
++		status = "okay";
++		i2c-bus = <&i2c1>; /* Isolated I2C bus on Hermes-BBB. */
++	};
++
++	botic {
++		compatible = "botic-audio-card";
++		status = "okay";
++
++		pinctrl-names = "init", "default", "compat";
++		pinctrl-0 = <&botic_cape_common_pins>;
++		pinctrl-1 = <&botic_cape_common_pins &botic_cape_default_pins>;
++		pinctrl-2 = <&botic_cape_common_pins &botic_cape_compat_pins>;
++
++		audio-port = <&mcasp0>;
++		audio-codec = <&sabre32_codec>;
++		audio-codec-dai = "sabre32-hifi";
++
++		int-masterclk-enable = <&gpio1 27 0>;
++		ext-masterclk-switch = <&gpio0 15 0>;
++		dsd-format-switch = <&gpio0 14 0>;
++		card-power-switch = <&gpio1 18 0>;
++	};
++};
++
++&am33xx_pinmux {
++	botic_cape_common_pins: botic_cape_common_pins {
++		pinctrl-single,pins = <
++			/* onboard 24.576MHz oscillator control */
++			0x06c 0x07      /* gpmc_a11.gpio1_27,         MUX_MODE7 | PIN_OUTPUT_PULLDOWN */
++			/* external masterclock enable */
++			0x048 0x07      /* gpmc_a2.gpio1_18           MUX_MODE7 | PIN_OUTPUT_PULLDOWN */
++			/* external masterclock switch */
++			0x184 0x07      /* uart1_txd.gpio0_15         MUX_MODE7 | PIN_OUTPUT_PULLDOWN */
++			/* DSD format switch */
++			0x180 0x07      /* uart1_rxd.gpio0_14         MUX_MODE7 | PIN_OUTPUT_PULLDOWN */
++			/* master clock */
++			0x1ac 0x28      /* mcasp0_ahclkx,             MUX_MODE0 | PIN_INPUT(/OUTPUT) */
++			/* bitclock */
++			0x190 0x28      /* mcasp0_aclkx,              MUX_MODE0 | PIN_INPUT(/OUTPUT) */
++			/* wordclock */
++			0x194 0x28      /* mcasp0_fsx,                MUX_MODE0 | PIN_INPUT(/OUTPUT) */
++			/* data pins */
++			0x198 0x28      /* mcasp0_axr0,               MUX_MODE0 | PIN_INPUT(/OUTPUT) */
++			0x1a8 0x28      /* mcasp0_axr1,               MUX_MODE0 | PIN_INPUT(/OUTPUT) */
++			0x1a4 0x2a      /* mcasp0_fsr.mcasp0.axr3,    MUX_MODE2 | PIN_INPUT(/OUTPUT) */
++			/* disable CLKOUT2 to allow usage of mcasp0_axr1 on P9_42 */
++			0x1b4 0x2f      /* xdma_event_intr1.gpio0_20, MUX_MODE7 | PIN_INPUT */
++		>;
++	};
++	botic_cape_default_pins: botic_cape_default_pins {
++		/* this configuration will allow to use AHCLKR in asynchronous mode later */
++		pinctrl-single,pins = <
++			/* data pins */
++			0x1a0 0x2a      /* mcasp0_aclkr.mcasp0_axr2,  MUX_MODE2 | PIN_INPUT(/OUTPUT) */
++			/* disable eCAP0_in_PWM0_out to allow usage of mcasp0_axr2 on P9_41 */
++			0x164 0x2f      /* ecap0_in_pwm0_out.gpio0_7, MUX_MODE7 | PIN_INPUT */
++		>;
++	};
++	botic_cape_compat_pins: botic_cape_compat_pins {
++		/* compatible with original BBB setup, this output is connected also to HDMI transmitter */
++		pinctrl-single,pins = <
++			/* data pins */
++			0x19c 0x2a      /* mcasp0_ahclkr.mcasp0_axr2, MUX_MODE2 | PIN_INPUT(/OUTPUT) */
++		>;
++	};
++
++	i2c1_pins: pinmux_bb_i2c1_pins {
++		pinctrl-single,pins = <
++			0x158 0x72
++			0x15c 0x72
++		>;
++	};
++};
++
++/* Enable McASP. Default parameters can be changed during run-time. */
++&mcasp0 {
++	status = "okay";
++	op-mode = <0>;          /* MCASP_IIS_MODE */
++	tdm-slots = <2>;
++	num-serializer = <4>;
++	serial-dir = <  /* 0: INACTIVE, 1: TX, 2: RX */
++		1 1 1 1
++	>;
++	tx-num-evt = <16>;
++	rx-num-evt = <1>;
++};
++
++/* Enable ADC driver. */
++&tscadc {
++	status = "okay";
++};
++
++/* (Hermes-BBB) A digital volume pot is connected to the AIN4. */
++&am335x_adc {
++	ti,adc-channels = <4>;
++};
++
++/* (Hermes-BBB) The I2C1 for isolated I2C access. */
++&i2c1 {
++	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&i2c1_pins>;
++	clock-frequency = <100000>;
++};
+diff --git a/arch/arm/boot/dts/am335x-boneblack-botic.dts b/arch/arm/boot/dts/am335x-boneblack-botic.dts
+new file mode 100644
+index 0000000..0ba4307
+--- /dev/null
++++ b/arch/arm/boot/dts/am335x-boneblack-botic.dts
+@@ -0,0 +1,161 @@
++/*
++ * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++/dts-v1/;
++
++#include "am33xx.dtsi"
++#include "am335x-bone-common-no-capemgr.dtsi"
++
++/ {
++	model = "TI AM335x BeagleBone Black";
++	compatible = "ti,am335x-bone-black", "ti,am335x-bone", "ti,am33xx";
++};
++
++&ldo3_reg {
++	regulator-min-microvolt = <1800000>;
++	regulator-max-microvolt = <1800000>;
++	regulator-always-on;
++};
++
++&mmc1 {
++	vmmc-supply = <&vmmcsd_fixed>;
++};
++
++&mmc2 {
++	vmmc-supply = <&vmmcsd_fixed>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&emmc_pins>;
++	bus-width = <8>;
++	status = "okay";
++};
++
++/ {
++	cpus {
++		cpu@0 {
++			cpu0-supply = <&dcdc2_reg>;
++			/*
++			 * To consider voltage drop between PMIC and SoC,
++			 * tolerance value is reduced to 2% from 4% and
++			 * voltage value is increased as a precaution.
++			 */
++			operating-points = <
++				/* kHz    uV */
++				1000000	1325000
++				800000	1300000
++				600000	1112000
++				300000	969000
++			>;
++		};
++	};
++};
++
++/ {
++	botic_codec: botic_codec {
++		compatible = "botic-audio-codec";
++		status = "okay";
++	};
++
++	botic {
++		compatible = "botic-audio-card";
++		status = "okay";
++
++		pinctrl-names = "init", "default", "compat";
++		pinctrl-0 = <&botic_cape_common_pins>;
++		pinctrl-1 = <&botic_cape_common_pins &botic_cape_default_pins>;
++		pinctrl-2 = <&botic_cape_common_pins &botic_cape_compat_pins>;
++
++		audio-port = <&mcasp0>;
++		audio-codec = <&botic_codec>;
++		audio-codec-dai = "botic-hifi";
++
++		int-masterclk-enable = <&gpio1 27 0>;
++		ext-masterclk-switch = <&gpio0 15 0>;
++		dsd-format-switch = <&gpio0 14 0>;
++		card-power-switch = <&gpio1 18 0>;
++	};
++};
++
++&am33xx_pinmux {
++	botic_cape_common_pins: botic_cape_common_pins {
++		pinctrl-single,pins = <
++			/* onboard 24.576MHz oscillator control */
++			0x06c 0x07      /* gpmc_a11.gpio1_27,         MUX_MODE7 | PIN_OUTPUT_PULLDOWN */
++			/* external masterclock enable */
++			0x048 0x07      /* gpmc_a2.gpio1_18           MUX_MODE7 | PIN_OUTPUT_PULLDOWN */
++			/* external masterclock switch */
++			0x184 0x07      /* uart1_txd.gpio0_15         MUX_MODE7 | PIN_OUTPUT_PULLDOWN */
++			/* DSD format switch */
++			0x180 0x07      /* uart1_rxd.gpio0_14         MUX_MODE7 | PIN_OUTPUT_PULLDOWN */
++			/* master clock */
++			0x1ac 0x28      /* mcasp0_ahclkx,             MUX_MODE0 | PIN_INPUT(/OUTPUT) */
++			/* bitclock */
++			0x190 0x28      /* mcasp0_aclkx,              MUX_MODE0 | PIN_INPUT(/OUTPUT) */
++			/* wordclock */
++			0x194 0x28      /* mcasp0_fsx,                MUX_MODE0 | PIN_INPUT(/OUTPUT) */
++			/* data pins */
++			0x198 0x28      /* mcasp0_axr0,               MUX_MODE0 | PIN_INPUT(/OUTPUT) */
++			0x1a8 0x28      /* mcasp0_axr1,               MUX_MODE0 | PIN_INPUT(/OUTPUT) */
++			0x1a4 0x2a      /* mcasp0_fsr.mcasp0.axr3,    MUX_MODE2 | PIN_INPUT(/OUTPUT) */
++			/* disable CLKOUT2 to allow usage of mcasp0_axr1 on P9_42 */
++			0x1b4 0x2f      /* xdma_event_intr1.gpio0_20, MUX_MODE7 | PIN_INPUT */
++		>;
++	};
++	botic_cape_default_pins: botic_cape_default_pins {
++		/* this configuration will allow to use AHCLKR in asynchronous mode later */
++		pinctrl-single,pins = <
++			/* data pins */
++			0x1a0 0x2a      /* mcasp0_aclkr.mcasp0_axr2,  MUX_MODE2 | PIN_INPUT(/OUTPUT) */
++			/* disable eCAP0_in_PWM0_out to allow usage of mcasp0_axr2 on P9_41 */
++			0x164 0x2f      /* ecap0_in_pwm0_out.gpio0_7, MUX_MODE7 | PIN_INPUT */
++		>;
++	};
++	botic_cape_compat_pins: botic_cape_compat_pins {
++		/* compatible with original BBB setup, this output is connected also to HDMI transmitter */
++		pinctrl-single,pins = <
++			/* data pins */
++			0x19c 0x2a      /* mcasp0_ahclkr.mcasp0_axr2, MUX_MODE2 | PIN_INPUT(/OUTPUT) */
++		>;
++	};
++
++	i2c1_pins: pinmux_bb_i2c1_pins {
++		pinctrl-single,pins = <
++			0x158 0x72
++			0x15c 0x72
++		>;
++	};
++};
++
++/* Enable McASP. Default parameters can be changed during run-time. */
++&mcasp0 {
++	status = "okay";
++	op-mode = <0>;          /* MCASP_IIS_MODE */
++	tdm-slots = <2>;
++	num-serializer = <4>;
++	serial-dir = <  /* 0: INACTIVE, 1: TX, 2: RX */
++		1 1 1 1
++	>;
++	tx-num-evt = <16>;
++	rx-num-evt = <1>;
++};
++
++/* Enable ADC driver. */
++&tscadc {
++	status = "okay";
++};
++
++/* (Hermes-BBB) A digital volume pot is connected to the AIN4. */
++&am335x_adc {
++	ti,adc-channels = <4>;
++};
++
++/* (Hermes-BBB) The I2C1 for isolated I2C access. */
++&i2c1 {
++	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&i2c1_pins>;
++	clock-frequency = <100000>;
++};
+diff --git a/sound/soc/codecs/Kconfig b/sound/soc/codecs/Kconfig
+index 1cd6ab3..61fa52e 100644
+--- a/sound/soc/codecs/Kconfig
++++ b/sound/soc/codecs/Kconfig
+@@ -44,6 +44,7 @@ config SND_SOC_ALL_CODECS
+ 	select SND_SOC_AK5386
+ 	select SND_SOC_ALC5623 if I2C
+ 	select SND_SOC_ALC5632 if I2C
++	select SND_SOC_BOTIC_CODEC
+ 	select SND_SOC_BT_SCO
+ 	select SND_SOC_CQ0093VC if MFD_DAVINCI_VOICECODEC
+ 	select SND_SOC_CS35L32 if I2C
+@@ -114,6 +115,7 @@ config SND_SOC_ALL_CODECS
+ 	select SND_SOC_RT5659 if I2C
+ 	select SND_SOC_RT5670 if I2C
+ 	select SND_SOC_RT5677 if I2C && SPI_MASTER
++	select SND_SOC_SABRE32 if I2C
+ 	select SND_SOC_SGTL5000 if I2C
+ 	select SND_SOC_SI476X if MFD_SI476X_CORE
+ 	select SND_SOC_SIRF_AUDIO_CODEC
+@@ -382,6 +384,9 @@ config SND_SOC_ALC5623
+ config SND_SOC_ALC5632
+ 	tristate
+ 
++config SND_SOC_BOTIC_CODEC
++	tristate "Botic CODEC"
++
+ config SND_SOC_BT_SCO
+ 	tristate "Dummy BT SCO codec driver"
+ 
+@@ -709,6 +714,10 @@ config SND_SOC_RT5677_SPI
+ 	tristate
+ 	default SND_SOC_RT5677 && SPI
+ 
++config SND_SOC_SABRE32
++	tristate "ESS Technology Sabre32 DAC"
++	depends on I2C
++
+ #Freescale sgtl5000 codec
+ config SND_SOC_SGTL5000
+ 	tristate "Freescale SGTL5000 CODEC"
+diff --git a/sound/soc/codecs/Makefile b/sound/soc/codecs/Makefile
+index 58036af..7235741 100644
+--- a/sound/soc/codecs/Makefile
++++ b/sound/soc/codecs/Makefile
+@@ -34,6 +34,7 @@ snd-soc-ak4642-objs := ak4642.o
+ snd-soc-ak4671-objs := ak4671.o
+ snd-soc-ak5386-objs := ak5386.o
+ snd-soc-arizona-objs := arizona.o
++snd-soc-botic-codec-objs := botic-codec.o
+ snd-soc-bt-sco-objs := bt-sco.o
+ snd-soc-cq93vc-objs := cq93vc.o
+ snd-soc-cs35l32-objs := cs35l32.o
+@@ -115,6 +116,7 @@ snd-soc-rt5659-objs := rt5659.o
+ snd-soc-rt5670-objs := rt5670.o
+ snd-soc-rt5677-objs := rt5677.o
+ snd-soc-rt5677-spi-objs := rt5677-spi.o
++snd-soc-sabre32-objs := sabre32.o
+ snd-soc-sgtl5000-objs := sgtl5000.o
+ snd-soc-alc5623-objs := alc5623.o
+ snd-soc-alc5632-objs := alc5632.o
+@@ -256,6 +258,7 @@ obj-$(CONFIG_SND_SOC_AK5386)	+= snd-soc-ak5386.o
+ obj-$(CONFIG_SND_SOC_ALC5623)    += snd-soc-alc5623.o
+ obj-$(CONFIG_SND_SOC_ALC5632)	+= snd-soc-alc5632.o
+ obj-$(CONFIG_SND_SOC_ARIZONA)	+= snd-soc-arizona.o
++obj-$(CONFIG_SND_SOC_BOTIC_CODEC)	+= snd-soc-botic-codec.o
+ obj-$(CONFIG_SND_SOC_BT_SCO)	+= snd-soc-bt-sco.o
+ obj-$(CONFIG_SND_SOC_CQ0093VC) += snd-soc-cq93vc.o
+ obj-$(CONFIG_SND_SOC_CS35L32)	+= snd-soc-cs35l32.o
+@@ -336,6 +339,7 @@ obj-$(CONFIG_SND_SOC_RT5659)	+= snd-soc-rt5659.o
+ obj-$(CONFIG_SND_SOC_RT5670)	+= snd-soc-rt5670.o
+ obj-$(CONFIG_SND_SOC_RT5677)	+= snd-soc-rt5677.o
+ obj-$(CONFIG_SND_SOC_RT5677_SPI)	+= snd-soc-rt5677-spi.o
++obj-$(CONFIG_SND_SOC_SABRE32)  += snd-soc-sabre32.o
+ obj-$(CONFIG_SND_SOC_SGTL5000)  += snd-soc-sgtl5000.o
+ obj-$(CONFIG_SND_SOC_SIGMADSP)	+= snd-soc-sigmadsp.o
+ obj-$(CONFIG_SND_SOC_SIGMADSP_I2C)	+= snd-soc-sigmadsp-i2c.o
+diff --git a/sound/soc/codecs/botic-codec.c b/sound/soc/codecs/botic-codec.c
+new file mode 100644
+index 0000000..a50870d
+--- /dev/null
++++ b/sound/soc/codecs/botic-codec.c
+@@ -0,0 +1,123 @@
++/*
++ * ASoC simple sound codec support
++ *
++ * Miroslav Rudisin <miero@seznam.cz>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++#include <linux/module.h>
++#include <linux/platform_device.h>
++#include <linux/of_platform.h>
++#include <sound/core.h>
++#include <sound/pcm.h>
++#include <sound/soc.h>
++
++#define BOTIC_CODEC_NAME "botic-codec"
++#define BOTIC_CODEC_DAI_NAME "botic-hifi"
++
++#define BOTIC_RATES (\
++            SNDRV_PCM_RATE_CONTINUOUS | \
++            SNDRV_PCM_RATE_11025 | \
++            SNDRV_PCM_RATE_22050 | \
++            SNDRV_PCM_RATE_44100 | \
++            SNDRV_PCM_RATE_88200 | \
++            SNDRV_PCM_RATE_176400 | \
++            SNDRV_PCM_RATE_352800 | \
++            SNDRV_PCM_RATE_705600 | \
++            SNDRV_PCM_RATE_16000 | \
++            SNDRV_PCM_RATE_32000 | \
++            SNDRV_PCM_RATE_48000 | \
++            SNDRV_PCM_RATE_96000 | \
++            SNDRV_PCM_RATE_192000 | \
++            SNDRV_PCM_RATE_384000 | \
++            SNDRV_PCM_RATE_768000 | \
++            0)
++
++#define BOTIC_FORMATS (\
++            SNDRV_PCM_FMTBIT_S16_LE | \
++            SNDRV_PCM_FMTBIT_S24_3LE | \
++            SNDRV_PCM_FMTBIT_S24_LE | \
++            SNDRV_PCM_FMTBIT_S32_LE | \
++            SNDRV_PCM_FMTBIT_DSD_U8 | \
++            SNDRV_PCM_FMTBIT_DSD_U16_LE | \
++            SNDRV_PCM_FMTBIT_DSD_U32_LE | \
++            0)
++
++static struct snd_soc_dai_driver botic_codec_dai = {
++    .name = BOTIC_CODEC_DAI_NAME,
++    .playback = {
++        .channels_min = 2,
++        .channels_max = 8,
++        .rate_min = 11025,
++        .rate_max = 768000,
++        .rates = BOTIC_RATES,
++        .formats = BOTIC_FORMATS,
++    },
++    .capture = {
++        .channels_min = 2,
++        .channels_max = 8,
++        .rate_min = 11025,
++        .rate_max = 768000,
++        .rates = BOTIC_RATES,
++        .formats = BOTIC_FORMATS,
++    },
++};
++
++static const struct snd_kcontrol_new botic_codec_controls[] = {
++    /* Dummy controls for some applications that requires ALSA controls. */
++    SOC_DOUBLE("Master Playback Volume", 0, 0, 0, 32, 1),
++    SOC_SINGLE("Master Playback Switch", 1, 0, 1, 1),
++};
++
++static unsigned int botic_codec_read(struct snd_soc_codec *codec,
++        unsigned int reg)
++{
++    return 0;
++}
++
++static int botic_codec_write(struct snd_soc_codec *codec,
++        unsigned int reg, unsigned int val)
++{
++    return 0;
++}
++
++static struct snd_soc_codec_driver botic_codec_socdrv = {
++    .read = botic_codec_read,
++    .write = botic_codec_write,
++    .component_driver = {
++        .controls = botic_codec_controls,
++        .num_controls = ARRAY_SIZE(botic_codec_controls),
++    },
++};
++
++static int asoc_botic_codec_probe(struct platform_device *pdev)
++{
++    return snd_soc_register_codec(&pdev->dev,
++            &botic_codec_socdrv, &botic_codec_dai, 1);
++}
++
++#if defined(CONFIG_OF)
++static const struct of_device_id asoc_botic_codec_dt_ids[] = {
++    { .compatible = "botic-audio-codec" },
++    { },
++};
++
++MODULE_DEVICE_TABLE(of, asoc_botic_codec_dt_ids);
++#endif
++
++static struct platform_driver asoc_botic_codec_driver = {
++    .probe = asoc_botic_codec_probe,
++    .driver = {
++        .name = "asoc-botic-codec",
++        .of_match_table = of_match_ptr(asoc_botic_codec_dt_ids),
++    },
++};
++
++module_platform_driver(asoc_botic_codec_driver);
++
++MODULE_AUTHOR("Miroslav Rudisin");
++MODULE_DESCRIPTION("ASoC Botic sound codec");
++MODULE_LICENSE("GPL");
++MODULE_ALIAS("platform:asoc-botic-codec");
+diff --git a/sound/soc/codecs/sabre32.c b/sound/soc/codecs/sabre32.c
+new file mode 100644
+index 0000000..7a1696e
+--- /dev/null
++++ b/sound/soc/codecs/sabre32.c
+@@ -0,0 +1,898 @@
++/*
++ * ESS Technology Sabre32 family Audio DAC support
++ *
++ * Miroslav Rudisin <miero@seznam.cz>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++#include <linux/module.h>
++#include <linux/moduleparam.h>
++#include <linux/timer.h>
++#include <linux/interrupt.h>
++#include <linux/platform_device.h>
++#include <linux/i2c.h>
++#include <linux/of_platform.h>
++#include <sound/core.h>
++#include <sound/pcm.h>
++#include <sound/soc.h>
++#include <sound/pcm_params.h>
++#include <sound/tlv.h>
++
++#include <asm/dma.h>
++#include <asm/mach-types.h>
++
++#include <linux/edma.h>
++#include <linux/delay.h>
++
++#include <linux/of_gpio.h>
++
++#define SABRE32_CODEC_NAME "sabre32-codec"
++#define SABRE32_CODEC_DAI_NAME "sabre32-hifi"
++
++struct sabre32_codec_data {
++    struct i2c_adapter *i2c_adapter;
++    struct i2c_client *i2c_client1;
++    struct regmap *client1;
++    /* Second I2C channel for the second DAC in the dual mono configuration. */
++    struct i2c_client *i2c_client2;
++    struct regmap *client2;
++    int stream_muted; /* ALSA is not playing */
++    unsigned int master_volume;
++    int master_mute;
++    unsigned int external_volume;
++    int external_mute;
++    int last_clock_48k;
++};
++
++#define SABRE32_RATES (\
++            SNDRV_PCM_RATE_CONTINUOUS | \
++            SNDRV_PCM_RATE_11025 | \
++            SNDRV_PCM_RATE_22050 | \
++            SNDRV_PCM_RATE_44100 | \
++            SNDRV_PCM_RATE_88200 | \
++            SNDRV_PCM_RATE_176400 | \
++            SNDRV_PCM_RATE_352800 | \
++            SNDRV_PCM_RATE_705600 | \
++            SNDRV_PCM_RATE_16000 | \
++            SNDRV_PCM_RATE_32000 | \
++            SNDRV_PCM_RATE_48000 | \
++            SNDRV_PCM_RATE_96000 | \
++            SNDRV_PCM_RATE_192000 | \
++            SNDRV_PCM_RATE_384000 | \
++            SNDRV_PCM_RATE_768000 | \
++            0)
++
++#define SABRE32_FORMATS (\
++            SNDRV_PCM_FMTBIT_S16_LE | \
++            SNDRV_PCM_FMTBIT_S24_3LE | \
++            SNDRV_PCM_FMTBIT_S24_LE | \
++            SNDRV_PCM_FMTBIT_S32_LE | \
++            SNDRV_PCM_FMTBIT_DSD_U8 | \
++            SNDRV_PCM_FMTBIT_DSD_U16_LE | \
++            SNDRV_PCM_FMTBIT_DSD_U32_LE | \
++            0)
++
++static const struct snd_soc_dai_ops sabre32_codec_dai_ops;
++
++static struct snd_soc_dai_driver sabre32_codec_dai = {
++    .name = SABRE32_CODEC_DAI_NAME,
++    .playback = {
++        .channels_min = 2,
++        .channels_max = 8,
++        .rate_min = 11025,
++        .rate_max = 768000,
++        .rates = SABRE32_RATES,
++        .formats = SABRE32_FORMATS,
++    },
++    /*
++     * TODO: DAC does not have a record capability,
++     * move this to another DAI of sound card.
++     */
++    .capture = {
++        .channels_min = 2,
++        .channels_max = 8,
++        .rate_min = 11025,
++        .rate_max = 768000,
++        .rates = SABRE32_RATES,
++        .formats = SABRE32_FORMATS,
++    },
++    .ops = &sabre32_codec_dai_ops,
++};
++
++#define VOLUME_MAXATTEN 201
++#define VOLUME_HALFSTEPS 20
++
++/*
++ * VOLUME_HALFSTEPS+1 steps of the half volume
++ * ~0.3dB change per step for 20 halfsteps
++ */
++static const unsigned int volume_steps[] = {
++    0x7fffffff,
++    0x7ba3cd36,
++    0x776da003,
++    0x735c2cd6,
++    0x6f6e336a,
++    0x6ba27e64,
++    0x67f7e2f2,
++    0x646d406f,
++    0x6101800e,
++    0x5db3947c,
++    0x5a827999,
++    0x576d341c,
++    0x5472d14e,
++    0x519266bc,
++    0x4ecb11ef,
++    0x4c1bf828,
++    0x4984461a,
++    0x47032fac,
++    0x4497efb8,
++    0x4241c7cf,
++    0x3fffffff,
++};
++
++static const char *spdif_input_text[] = {
++    "1", "2", "3", "4", "5", "6", "7", "8"
++};
++
++static SOC_ENUM_SINGLE_DECL(spdif_input, 2, 0, spdif_input_text);
++
++static const char *bypass_or_use_text[] = {
++    "Bypass", "Use"
++};
++
++static const char *deemphasis_filter_text[] = {
++    "Bypass", "32kHz", "44.1kHz", "48kHz"
++};
++
++static SOC_ENUM_SINGLE_DECL(jitter_reduction, 3, 0, bypass_or_use_text);
++static SOC_ENUM_SINGLE_DECL(deemphasis_filter, 4, 0, deemphasis_filter_text);
++
++static const char *dpll_text[] = {
++    "1x Auto",
++    "128x Auto",
++    "No",
++    /* Notice: these values are just a guess from the datasheet info */
++    "1x", "2x", "4x", "8x", "16x", "32x", "64x",
++    "128x", "256x", "512x", "1024x", "2048x", "4096x", "8192x",
++};
++
++static SOC_ENUM_SINGLE_DECL(dpll, 5, 0, dpll_text);
++
++static const char *iir_bw_text[] = {
++    "Normal", "50k", "60k", "70k"
++};
++
++static SOC_ENUM_SINGLE_DECL(iir_bw, 6, 0, iir_bw_text);
++
++static const char *fir_rolloff_text[] = {
++    "Slow", "Fast"
++};
++
++static SOC_ENUM_SINGLE_DECL(fir_rolloff, 7, 0, fir_rolloff_text);
++
++static const char *true_mono_text[] = {
++    "Left", "Off", "Right"
++};
++
++static SOC_ENUM_SINGLE_DECL(true_mono, 8, 0, true_mono_text);
++
++static const char *dpll_phase_text[] = {
++    "Normal", "Flip"
++};
++
++static SOC_ENUM_SINGLE_DECL(dpll_phase, 9, 0, dpll_phase_text);
++
++static const char *os_filter_text[] = {
++    "Use", "Bypass"
++};
++
++static SOC_ENUM_SINGLE_DECL(os_filter, 10, 0, os_filter_text);
++
++static const char *remap_inputs_text[] = {
++    "12345678", "12345676", "12345658", "12345656",
++    "12325678", "12325676", "12325658", "12325656",
++    "12145678", "12145676", "12145658", "12145656",
++    "12125678", "12125676", "12125658", "12125656",
++};
++
++static SOC_ENUM_SINGLE_DECL(remap_inputs, 12, 0, remap_inputs_text);
++
++static const char *mclk_notch_text[] = {
++    "No Notch", "MCLK/4", "MCLK/8", "MCLK/16", "MCLK/32", "MCLK/64"
++};
++
++static SOC_ENUM_SINGLE_DECL(mclk_notch, 13, 0, mclk_notch_text);
++
++static const char *remap_output_text[] = {
++    "q6true", "q7pseudo", "q7true", "q8pseudo", "q8true", "q9pseudo"
++};
++
++static SOC_ENUM_SINGLE_DECL(remap_output, 14, 0, remap_output_text);
++
++static const DECLARE_TLV_DB_MINMAX_MUTE(master_tlv, -6051, 0);
++static const DECLARE_TLV_DB_MINMAX(dac_tlv, -12750, 0);
++
++static const struct snd_kcontrol_new sabre32_codec_controls[] = {
++    SOC_DOUBLE_TLV("Master Playback Volume", 0, 0, 0, VOLUME_MAXATTEN, 1,
++            master_tlv),
++    SOC_SINGLE("Master Playback Switch", 1, 0, 1, 1),
++    SOC_ENUM("SPDIF Source", spdif_input),
++    SOC_ENUM("Jitter Reduction", jitter_reduction),
++    SOC_ENUM("De-emphasis Filter", deemphasis_filter),
++    SOC_ENUM("DPLL", dpll),
++    SOC_ENUM("IIR Bandwidth", iir_bw),
++    SOC_ENUM("FIR Rolloff", fir_rolloff),
++    SOC_ENUM("True Mono", true_mono),
++    SOC_ENUM("DPLL Phase", dpll_phase),
++    SOC_ENUM("Oversampling Filter", os_filter),
++    SOC_ENUM("Remap Inputs", remap_inputs),
++    SOC_ENUM("MCLK Notch", mclk_notch),
++    SOC_ENUM("Remap Output", remap_output),
++    SOC_DOUBLE_TLV("External Playback Volume", 15, 0, 0, VOLUME_MAXATTEN, 1,
++            master_tlv),
++    SOC_SINGLE("External Playback Switch", 16, 0, 1, 1),
++    SOC_SINGLE_TLV("DAC1 Playback Volume", 20, 0, 255, 1, dac_tlv),
++    SOC_SINGLE_TLV("DAC2 Playback Volume", 21, 0, 255, 1, dac_tlv),
++    SOC_SINGLE_TLV("DAC3 Playback Volume", 22, 0, 255, 1, dac_tlv),
++    SOC_SINGLE_TLV("DAC4 Playback Volume", 23, 0, 255, 1, dac_tlv),
++    SOC_SINGLE_TLV("DAC5 Playback Volume", 24, 0, 255, 1, dac_tlv),
++    SOC_SINGLE_TLV("DAC6 Playback Volume", 25, 0, 255, 1, dac_tlv),
++    SOC_SINGLE_TLV("DAC7 Playback Volume", 26, 0, 255, 1, dac_tlv),
++    SOC_SINGLE_TLV("DAC8 Playback Volume", 27, 0, 255, 1, dac_tlv),
++};
++
++static const struct regmap_config empty_regmap_config;
++
++static int sabre32_codec_probe(struct snd_soc_codec *codec)
++{
++    struct sabre32_codec_data *codec_data = snd_soc_codec_get_drvdata(codec);
++    struct regmap_config config;
++    int ret;
++
++    if (codec_data->i2c_adapter == NULL)
++        return 0;
++
++    codec_data->i2c_client1 = i2c_new_dummy(codec_data->i2c_adapter, 0x48);
++    if (codec_data->i2c_client1 == NULL)
++        return -EBUSY;
++
++    codec_data->i2c_client2 = i2c_new_dummy(codec_data->i2c_adapter, 0x49);
++    if (codec_data->i2c_client1 == NULL) {
++        i2c_unregister_device(codec_data->i2c_client1);
++        return -EBUSY;
++    }
++
++    /* ES9018 DAC */
++    config = empty_regmap_config;
++    config.val_bits = 8;
++    config.reg_bits = 8;
++    config.max_register = 72;
++
++    codec_data->client1 =
++        devm_regmap_init_i2c(codec_data->i2c_client1, &config);
++
++    codec_data->client2 =
++        devm_regmap_init_i2c(codec_data->i2c_client2, &config);
++
++    /* Mute DAC */
++
++    ret = regmap_update_bits(codec_data->client1, 10, 0x01, 0x01);
++    if (ret != 0) {
++        dev_warn(codec->dev, "DAC#1 not found\n");
++        i2c_unregister_device(codec_data->i2c_client1);
++        codec_data->i2c_client1 = NULL;
++    }
++    ret = regmap_update_bits(codec_data->client2, 10, 0x01, 0x01);
++    if (ret != 0) {
++        dev_warn(codec->dev, "DAC#2 not found\n");
++        i2c_unregister_device(codec_data->i2c_client2);
++        codec_data->i2c_client2 = NULL;
++    }
++
++    /* Initialize codec params. */
++    codec_data->stream_muted = 1;
++    codec_data->master_mute = 0;
++    codec_data->external_mute = 1;
++    codec_data->last_clock_48k = -1; /* force relock on the first use */
++
++    if (0) {
++        int i;
++        int r;
++        unsigned int v;
++        for (i=0;i<72;i++) {
++            r = regmap_read(codec_data->client1, i, &v);
++            printk(" %c%02x", (r == 0 ? ' ' : '*'), v);
++            if (i % 8 == 7) printk("\n");
++        }
++    }
++
++
++    return 0;
++}
++
++static int sabre32_codec_remove(struct snd_soc_codec *codec)
++{
++    struct sabre32_codec_data *codec_data = snd_soc_codec_get_drvdata(codec);
++
++    if (codec_data->i2c_client1 != NULL)
++        i2c_unregister_device(codec_data->i2c_client1);
++
++    if (codec_data->i2c_client2 != NULL)
++        i2c_unregister_device(codec_data->i2c_client2);
++
++    return 0;
++}
++
++static int sabre32_master_trim_read(
++        struct regmap *client,
++        unsigned int *val)
++{
++    unsigned int v;
++    unsigned int t, t2;
++    int r = 0;
++
++    r = regmap_read(client, 23, &t);
++    v = t & 0x7f;
++    v <<= 8;
++    r |= regmap_read(client, 22, &t);
++    v |= t;
++    v <<= 8;
++    r |= regmap_read(client, 21, &t);
++    v |= t;
++    v <<= 8;
++    r |= regmap_read(client, 20, &t);
++    v |= t;
++    /* convert 0x7fffffff--0 to 0-VOLUME_MAXATTEN */
++    t = v;
++    if (t != 0) {
++        v = 0;
++        while (t <= volume_steps[VOLUME_HALFSTEPS]) {
++            t <<= 1;
++            v += VOLUME_HALFSTEPS;
++        }
++        for (t2 = 1; t2 < VOLUME_HALFSTEPS; t2++) {
++            if (t > volume_steps[t2])
++                break;
++            v++;
++        }
++        if (v > VOLUME_MAXATTEN)
++            v = VOLUME_MAXATTEN;
++    } else
++        v = VOLUME_MAXATTEN;
++
++    *val = v;
++
++    return r;
++}
++
++static int sabre32_master_trim_write(
++        struct regmap *client,
++        unsigned int val)
++{
++    unsigned int t;
++    int ret;
++
++    if (val < VOLUME_MAXATTEN)
++        t = volume_steps[val % VOLUME_HALFSTEPS] >>
++            (val / VOLUME_HALFSTEPS);
++    else
++        t = 0;
++    ret = regmap_write(client, 20, t & 0xff);
++    t >>= 8;
++    ret |= regmap_write(client, 21, t & 0xff);
++    t >>= 8;
++    ret |= regmap_write(client, 22, t & 0xff);
++    t >>= 8;
++    ret |= regmap_write(client, 23, t);
++
++    return ret;
++}
++
++static unsigned int sabre32_codec_read(struct snd_soc_codec *codec,
++        unsigned int reg)
++{
++    struct sabre32_codec_data *codec_data = snd_soc_codec_get_drvdata(codec);
++    unsigned int v = 0;
++    unsigned int t, t2;
++    int r = 0;
++
++    if (codec_data->client1 == NULL)
++        return 0;
++
++    switch(reg) {
++    case 0: /* Master Volume */
++        if (!codec_data->stream_muted) {
++            r = sabre32_master_trim_read(codec_data->client1, &v);
++            codec_data->master_volume = v;
++        } else
++            v = codec_data->master_volume;
++        break;
++    case 1: /* Master Volume Mute */
++        v = codec_data->master_mute;
++        break;
++    case 15: /* External Volume */
++        if (codec_data->stream_muted) {
++            r = sabre32_master_trim_read(codec_data->client1, &v);
++            codec_data->external_volume = v;
++        } else
++            v = codec_data->external_volume;
++        break;
++    case 16: /* External Volume Mute */
++        v = codec_data->external_mute;
++        break;
++    case 2: /* SPDIF Source */
++        v = 0;
++        r = regmap_read(codec_data->client1, 18, &t);
++        while (t > 0) {
++            v++;
++            t &= ~1U;
++            t >>= 1;
++        }
++        v--;
++        break;
++    case 3: /* Jitter reduction */
++        r = regmap_read(codec_data->client1, 10, &t);
++        v = !!(t & 0x04);
++        break;
++    case 4: /* De-emphasis filter */
++        r = regmap_read(codec_data->client1, 10, &t);
++        v = !(t & 0x02);
++        if (!r && v) {
++            r = regmap_read(codec_data->client1, 11, &t);
++            v = (t & 0x3) + 1;
++            if (v > 3) {
++                /* skip reserved value */
++                v = 0;
++            }
++        }
++        break;
++    case 5: /* DPLL */
++        r = regmap_read(codec_data->client1, 25, &t);
++        if (!r) {
++            if (t & 0x02) {
++                /* Auto */
++                v = t & 0x01;
++            } else {
++                r = regmap_read(codec_data->client1, 11, &t2);
++                v = (t2 & 0x1c) >> 2;
++                if ((v > 0) && !!(t & 0x01))
++                    v += 7;
++                v += 2;
++            }
++        }
++        break;
++    case 6: /* IIR Bandwidth */
++        r = regmap_read(codec_data->client1, 14, &t);
++        v = (t & 0x06) >> 1;
++        break;
++    case 7: /* FIR Rolloff */
++        r = regmap_read(codec_data->client1, 14, &t);
++        v = t & 0x01;
++        break;
++    case 8: /* True Mono */
++        r = regmap_read(codec_data->client1, 17, &t);
++        if (!r) {
++            if (t & 0x01)
++                v = 2 * !!(t & 0x80);
++            else
++                v = 1;
++        }
++        break;
++    case 9: /* DPLL Phase */
++        r = regmap_read(codec_data->client1, 17, &t);
++        v = !!(t & 0x02);
++        break;
++    case 10: /* Oversampling Filter */
++        r = regmap_read(codec_data->client1, 17, &t);
++        v = !!(t & 0x40);
++        break;
++    case 12: /* Remap Inputs */
++        r = regmap_read(codec_data->client1, 14, &t);
++        v = (t & 0xf0) >> 4;
++        break;
++    case 13: /* MCLK Notch */
++        r = regmap_read(codec_data->client1, 12, &t);
++        t = t & 0x1f;
++        v = 0;
++        while (t > 0) {
++            t = (t & ~1U) >> 1;
++            v++;
++        }
++        break;
++    case 14: /* Remap Output (Quantizer & Differential) */
++        r = regmap_read(codec_data->client1, 15, &t);
++        v = 2 * (t & 0x03);
++        if (!r) {
++            r = regmap_read(codec_data->client1, 14, &t);
++            if ((t & 0x08) == 0)
++                v--;
++        }
++        /* Notice: Hides bad configuration as "6 True". */
++        if (v < 0 || v > 5)
++            v = 0;
++        break;
++    case 20:
++    case 21:
++    case 22:
++    case 23:
++    case 24:
++    case 25:
++    case 26:
++    case 27:
++        /* DAC1-DAC8 Volume */
++        r = regmap_read(codec_data->client1, reg - 20, &v);
++        break;
++    }
++
++    if (!r)
++        return v;
++    else
++        return 0;
++}
++
++static int sabre32_codec_write(struct snd_soc_codec *codec,
++        unsigned int reg, unsigned int val)
++{
++    struct sabre32_codec_data *codec_data = snd_soc_codec_get_drvdata(codec);
++    int ret = 0;
++
++    if (codec_data->client1 == NULL)
++        return 0;
++
++    switch(reg) {
++    case 0: /* Master Volume */
++        if (!codec_data->stream_muted) {
++            ret = sabre32_master_trim_write(codec_data->client1, val);
++        }
++        codec_data->master_volume = val;
++        break;
++    case 1: /* Master Volume Mute */
++        if (!codec_data->stream_muted || !codec_data->external_mute)
++            ret = regmap_update_bits(codec_data->client1, 10, 0x01, val);
++        codec_data->master_mute = val;
++        break;
++    case 15: /* External Volume */
++        if (codec_data->stream_muted) {
++            ret = sabre32_master_trim_write(codec_data->client1, val);
++        }
++        codec_data->external_volume = val;
++        break;
++    case 16: /* External Volume Mute */
++        if (codec_data->stream_muted)
++            ret = regmap_update_bits(codec_data->client1, 10, 0x01, val);
++        codec_data->external_mute = val;
++        break;
++    case 2: /* SPDIF Source */
++        ret = regmap_write(codec_data->client1, 18, 1U << val);
++        break;
++    case 3: /* Jitter reduction */
++        ret = regmap_update_bits(codec_data->client1, 10, 0x04, 0x04 * val);
++        break;
++    case 4: /* De-emphasis filter */
++        ret = 0;
++        if (val > 0)
++            ret = regmap_update_bits(codec_data->client1, 11, 0x03, val - 1);
++        if (!ret)
++            ret = regmap_update_bits(codec_data->client1, 10, 0x02, (!val) << 1);
++        break;
++    case 5: /* DPLL */
++        if (val < 2) {
++            /* Auto */
++            ret = regmap_update_bits(codec_data->client1, 11, 0x1c, 0);
++            if (!ret)
++                ret = regmap_update_bits(codec_data->client1, 25, 0x03, 2 + val);
++        } else {
++            val -= 2;
++            if (val <= 7) {
++                ret = regmap_update_bits(codec_data->client1, 11, 0x1c, val << 2);
++                val = 0;
++            } else {
++                val -= 7;
++                ret = regmap_update_bits(codec_data->client1, 11, 0x1c, val << 2);
++                val = 1;
++            }
++            if (!ret)
++                ret = regmap_update_bits(codec_data->client1, 25, 0x03, val);
++        }
++        break;
++    case 6: /* IIR Bandwidth */
++        ret = regmap_update_bits(codec_data->client1, 14, 0x06, val << 1);
++        break;
++    case 7: /* FIR Rolloff */
++        ret = regmap_update_bits(codec_data->client1, 14, 0x01, val);
++        break;
++    case 8: /* True Mono */
++        if (val == 1)
++            ret = regmap_update_bits(codec_data->client1, 17, 0x81, 0);
++        else
++            ret = regmap_update_bits(codec_data->client1, 17, 0x81,
++                    (0x80 * !!val) + 1);
++        break;
++    case 9: /* DPLL Phase */
++        ret = regmap_update_bits(codec_data->client1, 17, 0x02, 0x02 * !!val);
++        break;
++    case 10: /* Oversampling Filter */
++        ret = regmap_update_bits(codec_data->client1, 17, 0x40, 0x40 * !!val);
++        break;
++    case 12: /* Remap Inputs */
++        ret = regmap_update_bits(codec_data->client1, 14, 0xf0, val << 4);
++        break;
++    case 13: /* MCLK Notch */
++        ret = regmap_update_bits(codec_data->client1, 12, 0x1f,
++                (1U << val) - 1);
++        break;
++    case 14: /* Remap Output (Quantizer & Differential) */
++        ret = regmap_update_bits(codec_data->client1, 14, 0x08,
++                0x08 * !(val % 2));
++        if (!ret)
++            ret = regmap_update_bits(codec_data->client1, 15, 0xff,
++                    0x55 * ((val + 1) / 2));
++        break;
++    case 20:
++    case 21:
++    case 22:
++    case 23:
++    case 24:
++    case 25:
++    case 26:
++    case 27:
++        /* DAC1-DAC8 Volume */
++        ret = regmap_write(codec_data->client1, reg - 20, val);
++        break;
++    }
++
++    if (!ret)
++        return 0;
++    else {
++        dev_warn(codec->dev, "unable to configure Codec via I2C; e=%d\n", ret);
++        return -EIO;
++    }
++}
++
++static struct snd_soc_codec_driver sabre32_codec_socdrv = {
++    .probe = sabre32_codec_probe,
++    .remove = sabre32_codec_remove,
++    .read = sabre32_codec_read,
++    .write = sabre32_codec_write,
++    .component_driver = {
++        .controls = sabre32_codec_controls,
++        .num_controls = ARRAY_SIZE(sabre32_codec_controls),
++    },
++};
++
++static int sabre32_codec_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
++{
++    struct snd_soc_codec *codec = dai->codec;
++    struct sabre32_codec_data *codec_data = snd_soc_codec_get_drvdata(codec);
++    int ret = 0;
++
++    if (codec_data->client1 == NULL)
++        return 0;
++
++    /* Mute the DAC before adjusting the parameters. */
++    (void)regmap_update_bits(codec_data->client1, 10, 0x01, 0x01);
++    /* Switch to the master volume. */
++    (void)sabre32_master_trim_write(codec_data->client1,
++            codec_data->master_volume);
++
++    switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
++    case SND_SOC_DAIFMT_DIT:
++        ret = regmap_update_bits(codec_data->client1, 8, 0x80, 0x80);
++        if (!ret)
++            ret = regmap_update_bits(codec_data->client1, 17, 0x08, 0x08);
++        break;
++    default:
++        ret = regmap_update_bits(codec_data->client1, 8, 0x80, 0x00);
++        if (!ret)
++            ret = regmap_update_bits(codec_data->client1, 17, 0x08, 0x00);
++        break;
++    }
++
++    if (ret != 0)
++        return ret;
++
++    switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
++    case SND_SOC_DAIFMT_DIT:
++    case SND_SOC_DAIFMT_I2S:
++        ret = regmap_update_bits(codec_data->client1, 10, 0x30, 0x00);
++        break;
++    case SND_SOC_DAIFMT_LEFT_J:
++        ret = regmap_update_bits(codec_data->client1, 10, 0x30, 0x10);
++        break;
++    case SND_SOC_DAIFMT_RIGHT_J:
++        ret = regmap_update_bits(codec_data->client1, 10, 0x30, 0x20);
++        break;
++    default:
++        dev_warn(codec->dev, "unsupported DAI fmt %d", fmt);
++        ret = -EINVAL;
++        break;
++    }
++
++    return ret;
++}
++
++static int sabre32_codec_mute_stream(struct snd_soc_dai *dai, int mute, int stream)
++{
++    struct snd_soc_codec *codec = dai->codec;
++    struct sabre32_codec_data *codec_data = snd_soc_codec_get_drvdata(codec);
++    int ret = 0;
++
++    if (codec_data->client1 == NULL)
++        return 0;
++
++    if (stream != SNDRV_PCM_STREAM_PLAYBACK)
++        return ret;
++
++    codec_data->stream_muted = mute;
++
++    if (mute) {
++        /* Reconfigure the DAC for a SPDIF playback from an external device. */
++        /* Mute the DAC first. */
++        (void)regmap_update_bits(codec_data->client1, 10, 0x01, 0x01);
++        /* Force SPDIF input. */
++        (void)regmap_update_bits(codec_data->client1, 8, 0x80, 0x80);
++        /* Re-enable SPDIF autodetect. */
++        (void)regmap_update_bits(codec_data->client1, 17, 0x08, 0x08);
++        /* Switch to external volume. */
++        (void)sabre32_master_trim_write(codec_data->client1,
++                codec_data->external_volume);
++        /* TODO: other parameters, e.g. DPLL */
++        /* Unmute the DAC after reconfiguration. */
++        if (!codec_data->master_mute && !codec_data->external_mute)
++            ret = regmap_update_bits(codec_data->client1, 10, 0x01, 0x00);
++    } else if (!codec_data->master_mute) {
++        /* Unmute the DAC if it is not muted by user. */
++        ret = regmap_update_bits(codec_data->client1, 10, 0x01, 0x00);
++    }
++
++    return ret;
++}
++
++static int sabre32_codec_hw_params(struct snd_pcm_substream *substream,
++        struct snd_pcm_hw_params *params, struct snd_soc_dai *dai)
++{
++    struct snd_soc_codec *codec = dai->codec;
++    struct sabre32_codec_data *codec_data = snd_soc_codec_get_drvdata(codec);
++    unsigned int rate = params_rate(params);
++    int clock_48k;
++    int ret;
++
++    if (codec_data->client1 == NULL)
++        return 0;
++
++    clock_48k = (rate % 12000 == 0);
++    if (clock_48k != codec_data->last_clock_48k) {
++        codec_data->last_clock_48k = clock_48k;
++        /* Force DPLL lock reset. */
++        (void)regmap_update_bits(codec_data->client1, 17, 0x20, 0x20);
++        ret = regmap_update_bits(codec_data->client1, 17, 0x20, 0x00);
++        if (ret)
++            return ret;
++    }
++
++    switch (params_format(params)) {
++    case SNDRV_PCM_FORMAT_S16_LE:
++        ret = regmap_update_bits(codec_data->client1, 10, 0xc0, 0x80);
++        break;
++
++    case SNDRV_PCM_FORMAT_S24_3LE:
++    case SNDRV_PCM_FORMAT_S24_LE:
++        ret = regmap_update_bits(codec_data->client1, 10, 0xc0, 0x00);
++        break;
++
++    case SNDRV_PCM_FORMAT_S32_LE:
++    case SNDRV_PCM_FORMAT_DSD_U8:
++    case SNDRV_PCM_FORMAT_DSD_U16_LE:
++    case SNDRV_PCM_FORMAT_DSD_U32_LE:
++        ret = regmap_update_bits(codec_data->client1, 10, 0xc0, 0xc0);
++        break;
++
++    default:
++        dev_warn(codec->dev, "unsupported PCM format %d", params_format(params));
++        ret = -EINVAL;
++    }
++
++    return ret;
++}
++
++static const struct snd_soc_dai_ops sabre32_codec_dai_ops = {
++    .set_fmt = sabre32_codec_set_fmt,
++    .mute_stream = sabre32_codec_mute_stream,
++    .hw_params = sabre32_codec_hw_params,
++};
++
++static int asoc_sabre32_codec_probe(struct platform_device *pdev)
++{
++    struct device_node *node = pdev->dev.of_node;
++    struct device_node *adapter_node;
++    struct sabre32_codec_data *codec_data;
++    int ret;
++
++    if (!pdev->dev.of_node) {
++        dev_err(&pdev->dev, "No device tree data\n");
++        return -ENODEV;
++    }
++
++    codec_data = devm_kzalloc(&pdev->dev, sizeof(struct sabre32_codec_data),
++            GFP_KERNEL);
++
++    adapter_node = of_parse_phandle(node, "i2c-bus", 0);
++    if (adapter_node) {
++        codec_data->i2c_adapter = of_get_i2c_adapter_by_node(adapter_node);
++        if (codec_data->i2c_adapter == NULL) {
++            dev_err(&pdev->dev, "failed to parse i2c-bus\n");
++            return -EPROBE_DEFER;
++        }
++    }
++
++    dev_set_drvdata(&pdev->dev, codec_data);
++
++    ret = snd_soc_register_codec(&pdev->dev,
++            &sabre32_codec_socdrv, &sabre32_codec_dai, 1);
++
++    if (ret != 0) {
++        i2c_put_adapter(codec_data->i2c_adapter);
++    }
++
++    return ret;
++}
++
++static int asoc_sabre32_codec_remove(struct platform_device *pdev)
++{
++    struct sabre32_codec_data *codec_data = platform_get_drvdata(pdev);
++
++    snd_soc_unregister_codec(&pdev->dev);
++
++    i2c_put_adapter(codec_data->i2c_adapter);
++
++    return 0;
++}
++
++static void asoc_sabre32_codec_shutdown(struct platform_device *pdev)
++{
++}
++
++#ifdef CONFIG_PM_SLEEP
++static int asoc_sabre32_codec_suspend(struct platform_device *pdev, pm_message_t state)
++{
++    return 0;
++}
++
++static int asoc_sabre32_codec_resume(struct platform_device *pdev)
++{
++    return 0;
++}
++#else
++#define asoc_sabre32_codec_suspend NULL
++#define asoc_sabre32_codec_resume NULL
++#endif
++
++#if defined(CONFIG_OF)
++static const struct of_device_id asoc_sabre32_codec_dt_ids[] = {
++    { .compatible = "sabre32-audio-codec" },
++    { },
++};
++
++MODULE_DEVICE_TABLE(of, asoc_sabre32_codec_dt_ids);
++#endif
++
++static struct platform_driver asoc_sabre32_codec_driver = {
++    .probe = asoc_sabre32_codec_probe,
++    .remove = asoc_sabre32_codec_remove,
++    .shutdown = asoc_sabre32_codec_shutdown,
++    .suspend = asoc_sabre32_codec_suspend,
++    .resume = asoc_sabre32_codec_resume,
++    .driver = {
++        .name = "asoc-sabre32-codec",
++        .of_match_table = of_match_ptr(asoc_sabre32_codec_dt_ids),
++    },
++};
++
++module_platform_driver(asoc_sabre32_codec_driver);
++
++MODULE_AUTHOR("Miroslav Rudisin");
++MODULE_DESCRIPTION("ESS Technology Sabre32 Audio DAC");
++MODULE_LICENSE("GPL");
++MODULE_ALIAS("platform:asoc-sabre32-codec");
+diff --git a/sound/soc/generic/Kconfig b/sound/soc/generic/Kconfig
+index c01c5dd..ce2d2b3 100644
+--- a/sound/soc/generic/Kconfig
++++ b/sound/soc/generic/Kconfig
+@@ -6,3 +6,17 @@ config SND_SIMPLE_CARD
+ 	select SND_SIMPLE_CARD_UTILS
+ 	help
+ 	  This option enables generic simple sound card support
++
++config SND_BOTIC_CARD
++	tristate "ASoC Botic sound card support"
++	help
++	  This option enables Botic sound card support
++
++config SND_AM33XX_SOC_BOTIC
++	tristate "Botic on BeagleBone Black"
++	depends on SOC_AM33XX
++	select SND_BOTIC_CARD
++	select SND_EDMA_SOC
++	select SND_DAVINCI_SOC_MCASP
++	help
++	  Say Y or M if you want to add support for Botic on BeagleBone Black.
+diff --git a/sound/soc/generic/Makefile b/sound/soc/generic/Makefile
+index 2d53c8d..17dddd9 100644
+--- a/sound/soc/generic/Makefile
++++ b/sound/soc/generic/Makefile
+@@ -1,5 +1,7 @@
+ snd-soc-simple-card-utils-objs	:= simple-card-utils.o
+ snd-soc-simple-card-objs	:= simple-card.o
++snd-soc-botic-objs	:= botic-card.o
+ 
+ obj-$(CONFIG_SND_SIMPLE_CARD_UTILS)	+= snd-soc-simple-card-utils.o
+ obj-$(CONFIG_SND_SIMPLE_CARD)		+= snd-soc-simple-card.o
++obj-$(CONFIG_SND_BOTIC_CARD)	+= snd-soc-botic.o
+diff --git a/sound/soc/generic/botic-card.c b/sound/soc/generic/botic-card.c
+new file mode 100644
+index 0000000..2fc5de6
+--- /dev/null
++++ b/sound/soc/generic/botic-card.c
+@@ -0,0 +1,629 @@
++/*
++ * ASoC simple sound card support
++ *
++ * Miroslav Rudisin <miero@seznam.cz>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++#include <linux/module.h>
++#include <linux/moduleparam.h>
++#include <linux/timer.h>
++#include <linux/interrupt.h>
++#include <linux/platform_device.h>
++#include <linux/i2c.h>
++#include <linux/of_platform.h>
++#include <sound/core.h>
++#include <sound/pcm.h>
++#include <sound/soc.h>
++#include <sound/pcm_params.h>
++
++#include <asm/dma.h>
++#include <asm/mach-types.h>
++
++#include <linux/edma.h>
++#include <linux/delay.h>
++
++#include <linux/of_gpio.h>
++
++#define ENABLE_EXT_MASTERCLK_44K1 1
++#define ENABLE_EXT_MASTERCLK_48K 2
++#define ENABLE_EXT_MASTERCLK_SWITCH_INVERT 4
++#define ENABLE_EXT_MASTERCLK_SINGLE 8
++
++#define ENABLE_DSD_FORMAT_SWITCH 1
++#define ENABLE_DSD_FORMAT_SWITCH_INVERT 2
++
++static int gpio_int_masterclk_enable = -1;
++static int gpio_ext_masterclk_switch = -1;
++static int gpio_dsd_format_switch = -1;
++static int gpio_card_power_switch = -1;
++
++static char *pinconfig = "default";
++/* I (I2S only), D (DSD only), M (I2S and DSD), S (SPDIF), R (Record/Capture) */
++static char *serconfig = "MMMM";
++
++static int ext_masterclk = ENABLE_EXT_MASTERCLK_44K1 | ENABLE_EXT_MASTERCLK_48K;
++static int dsd_format_switch = ENABLE_DSD_FORMAT_SWITCH;
++static int dai_format = SND_SOC_DAIFMT_CBS_CFS | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_I2S;
++
++static int clk_44k1 = 22579200;
++static int clk_48k = 24576000;
++static int blr_ratio = 64;
++
++static int is_dsd(snd_pcm_format_t format)
++{
++    switch (format) {
++        case SNDRV_PCM_FORMAT_DSD_U8:
++        case SNDRV_PCM_FORMAT_DSD_U16_LE:
++        case SNDRV_PCM_FORMAT_DSD_U16_BE:
++        case SNDRV_PCM_FORMAT_DSD_U32_LE:
++        case SNDRV_PCM_FORMAT_DSD_U32_BE:
++            return 1;
++            break;
++
++        default:
++            return 0;
++            break;
++    }
++}
++
++struct botic_ser_setup {
++    int dai_fmt;
++    int nch_tx;
++    int tx_slots[4];
++    int nch_rx;
++    int rx_slots[4];
++};
++
++static int botic_setup_serializers(struct snd_soc_dai *cpu_dai,
++        snd_pcm_format_t format, struct botic_ser_setup *ser_setup)
++{
++    int n_i2s = 0;
++    int n_dsd = 0;
++    int n_spdif = 0;
++    int i;
++    int ret;
++
++    /* clear serializer setup */
++    memset(ser_setup, 0, sizeof(*ser_setup));
++
++    for (i = 0; i < 4; i++) {
++        switch (serconfig[i]) {
++            case 'I':
++                if (is_dsd(format)) continue;
++                n_i2s++;
++                break;
++            case 'D':
++                if (!is_dsd(format)) continue;
++                n_dsd++;
++                break;
++            case 'M':
++                n_i2s++;
++                n_dsd++;
++                break;
++            case 'S':
++                n_spdif++;
++                break;
++            case 'R':
++                ser_setup->rx_slots[ser_setup->nch_rx++] = i;
++                continue;
++            case '-':
++                continue;
++            default:
++                printk(KERN_ERR "botic-card: invalid character '%c'"
++                       " in serconfig\n", serconfig[i]);
++                return -EINVAL;
++                break;
++        }
++        ser_setup->tx_slots[ser_setup->nch_tx++] = i;
++    }
++
++    if (n_spdif > 0 && (n_i2s + n_dsd) != 0) {
++        printk(KERN_ERR "botic-card: SPDIF cannot be combined with other formats");
++        return -EINVAL;
++    }
++
++    if (n_dsd == 0 && is_dsd(format)) {
++        printk(KERN_ERR "botic-card: no pins for DSD playback");
++        return -EINVAL;
++    }
++
++    ret = snd_soc_dai_set_channel_map(cpu_dai, ser_setup->nch_tx,
++            ser_setup->tx_slots, ser_setup->nch_rx, ser_setup->rx_slots);
++    if (ret < 0)
++        return ret;
++
++    ser_setup->dai_fmt = dai_format;
++    if (n_spdif > 0) {
++#if 1
++        ser_setup->dai_fmt = SND_SOC_DAIFMT_DIT;
++#else
++        printk(KERN_ERR "botic-card: DIT is not supported dai format");
++        return -EINVAL;
++#endif
++    }
++
++    return 0;
++}
++
++static int botic_hw_params(struct snd_pcm_substream *substream,
++             struct snd_pcm_hw_params *params)
++{
++    struct snd_soc_pcm_runtime *rtd = substream->private_data;
++    struct snd_soc_dai *codec_dai = rtd->codec_dai;
++    struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
++    unsigned sysclk, bclk, divisor;
++    struct botic_ser_setup ser_setup;
++    int ret;
++
++    snd_pcm_format_t format = params_format(params);
++    unsigned int rate = params_rate(params);
++
++    /* setup CPU serializers */
++    ret = botic_setup_serializers(cpu_dai, format, &ser_setup);
++    if (ret < 0)
++        return ret;
++
++    /* set codec DAI configuration */
++    ret = snd_soc_dai_set_fmt(codec_dai, ser_setup.dai_fmt);
++    if ((ret < 0) && (ret != -ENOTSUPP))
++        return ret;
++
++    /* set cpu DAI configuration */
++    ret = snd_soc_dai_set_fmt(cpu_dai, ser_setup.dai_fmt);
++    if (ret < 0)
++        return ret;
++
++    /* select correct clock for requested sample rate */
++    if ((clk_44k1 != 0) && (clk_44k1 % rate == 0)) {
++        sysclk = clk_44k1;
++        if (gpio_int_masterclk_enable >= 0) {
++            gpio_set_value(gpio_int_masterclk_enable, 0);
++        }
++        if (gpio_ext_masterclk_switch >= 0) {
++            /* set level to LOW for 44k1 sampling rates */
++            gpio_set_value(gpio_ext_masterclk_switch,
++                    !!(ext_masterclk & ENABLE_EXT_MASTERCLK_SWITCH_INVERT));
++        }
++    } else if (clk_48k % rate == 0) {
++        sysclk = clk_48k;
++        if (gpio_ext_masterclk_switch >= 0) {
++            /* set level to HIGH for 48k sampling rates */
++            gpio_set_value(gpio_ext_masterclk_switch,
++                    !(ext_masterclk & ENABLE_EXT_MASTERCLK_SWITCH_INVERT));
++        }
++        if ((gpio_int_masterclk_enable >= 0) &&
++                !(ext_masterclk & ENABLE_EXT_MASTERCLK_48K)) {
++            /* 44k1 clock is disabled now, we can enable onboard clock */
++            gpio_set_value(gpio_int_masterclk_enable, 1);
++        }
++    } else if ((dai_format & SND_SOC_DAIFMT_CBM_CFM) == 0) {
++        printk("unsupported rate %d\n", rate);
++        return -EINVAL;
++    } else {
++        printk("slave rate %d\n", rate);
++        sysclk = 0;
++    }
++
++    /* setup DSD format switch */
++    if (!(dsd_format_switch & ENABLE_DSD_FORMAT_SWITCH) ||
++        (gpio_dsd_format_switch < 0)) {
++        /* DSD format switch is disabled or not available */
++    } else if (is_dsd(params_format(params))) {
++        /* DSD format switch is enabled, set level to HIGH for DSD playback */
++        gpio_set_value(gpio_dsd_format_switch,
++                !(dsd_format_switch & ENABLE_DSD_FORMAT_SWITCH_INVERT));
++    } else {
++        /* DSD format switch is enabled, set level to LOW for PCM playback */
++        gpio_set_value(gpio_dsd_format_switch,
++                !!(dsd_format_switch & ENABLE_DSD_FORMAT_SWITCH_INVERT));
++    }
++
++    /* set the codec system clock */
++    ret = snd_soc_dai_set_sysclk(codec_dai, 0, sysclk, SND_SOC_CLOCK_IN);
++    if ((ret < 0) && (ret != -ENOTSUPP))
++        return ret;
++
++    /* use the external clock */
++    ret = snd_soc_dai_set_sysclk(cpu_dai, 0, sysclk, SND_SOC_CLOCK_IN);
++    if (ret < 0) {
++        printk(KERN_WARNING "botic-card: unable to set clock to CPU; ret=%d", ret);
++        return ret;
++    }
++
++    ret = snd_soc_dai_set_clkdiv(cpu_dai, 0, 1);
++    if (ret < 0) {
++        printk(KERN_WARNING "botic-card: unsupported set_clkdiv0");
++        return ret;
++    }
++
++    if ((dai_format & SND_SOC_DAIFMT_CBM_CFM) != 0) {
++        printk("slave mode...\n");
++        return 0;
++    }
++
++    switch (params_format(params)) {
++        case SNDRV_PCM_FORMAT_DSD_U8:
++            /* Clock rate for DSD matches bitrate */
++            ret = snd_soc_dai_set_clkdiv(cpu_dai, 2, 0);
++            bclk = 8 * rate;
++            break;
++
++        case SNDRV_PCM_FORMAT_DSD_U16_LE:
++        case SNDRV_PCM_FORMAT_DSD_U16_BE:
++            /* Clock rate for DSD matches bitrate */
++            ret = snd_soc_dai_set_clkdiv(cpu_dai, 2, 0);
++            bclk = 16 * rate;
++            break;
++
++        case SNDRV_PCM_FORMAT_DSD_U32_LE:
++        case SNDRV_PCM_FORMAT_DSD_U32_BE:
++            /* Clock rate for DSD matches bitrate */
++            ret = snd_soc_dai_set_clkdiv(cpu_dai, 2, 0);
++            bclk = 32 * rate;
++            break;
++
++        default:
++            /* PCM */
++            ret = snd_soc_dai_set_clkdiv(cpu_dai, 2, blr_ratio);
++            if (blr_ratio != 0) {
++                bclk = blr_ratio * rate;
++            } else {
++                bclk = snd_soc_params_to_bclk(params);
++            }
++            break;
++    }
++    if (ret < 0) {
++        printk(KERN_WARNING "botic-card: unsupported BCLK/LRCLK ratio");
++        return ret;
++    }
++
++    divisor = (sysclk + (bclk / 2)) / bclk;
++    ret = snd_soc_dai_set_clkdiv(cpu_dai, 1, divisor);
++    if (ret < 0) {
++        printk(KERN_WARNING "botic-card: unsupported set_clkdiv1");
++        return ret;
++    }
++
++    /* Insert delay needed for enabled clocks. */
++    udelay(50);
++
++    return 0;
++}
++
++static struct snd_soc_ops botic_ops = {
++    .hw_params = botic_hw_params,
++};
++
++/* digital audio interface glue - connects codec <--> CPU */
++static struct snd_soc_dai_link botic_dai = {
++    .name = "ExtDAC",
++    .stream_name = "external",
++    .ops = &botic_ops,
++};
++
++static struct snd_soc_card botic_card = {
++    .name = "Botic",
++    .owner = THIS_MODULE,
++    .dai_link = &botic_dai,
++    .num_links = 1,
++};
++
++static int get_optional_gpio(int *optional_gpio, struct platform_device *pdev,
++        const char *gpio_name, unsigned long gpio_flags)
++{
++    struct device_node *np = pdev->dev.of_node;
++    struct property *p;
++    int lp;
++    int ret;
++    int gpio;
++
++    p = of_find_property(np, gpio_name, &lp);
++    if (!p) {
++        dev_err(&pdev->dev, "entry for %s does not exist\n", gpio_name);
++        return -ENOENT;
++    }
++
++    if (lp == 0) {
++        *optional_gpio = -1;
++        return 0;
++    }
++
++    ret = of_get_named_gpio(np, gpio_name, 0);
++    if (ret < 0) {
++        dev_err(&pdev->dev, "failed to read GPIO for %s\n", gpio_name);
++        return ret;
++    }
++
++    gpio = ret;
++    ret = gpio_request_one(gpio, gpio_flags, gpio_name);
++    if (ret < 0) {
++        dev_err(&pdev->dev, "failed to claim GPIO for %s\n", gpio_name);
++        return ret;
++    }
++
++    *optional_gpio = gpio;
++
++    return 0;
++}
++
++static int asoc_botic_card_probe(struct platform_device *pdev)
++{
++    struct device_node *np = pdev->dev.of_node;
++    struct pinctrl *pctl;
++    struct pinctrl_state *pctl_state;
++    int ret;
++
++    /* load selected pinconfig */
++    pctl = devm_pinctrl_get(&pdev->dev);
++    if (IS_ERR(pctl)) {
++        ret = PTR_ERR(pctl);
++        goto asoc_botic_card_probe_error;
++    }
++    pctl_state = pinctrl_lookup_state(pctl, pinconfig);
++    if (IS_ERR(pctl_state)) {
++        dev_err(&pdev->dev, "unable to lookup pinconfig %s\n", pinconfig);
++        ret = PTR_ERR(pctl_state);
++        goto asoc_botic_card_probe_error;
++    }
++    ret = pinctrl_select_state(pctl, pctl_state);
++    if (ret < 0) {
++        dev_err(&pdev->dev, "unable to set pinconfig %s\n", pinconfig);
++        goto asoc_botic_card_probe_error;
++    }
++    dev_info(&pdev->dev, "using '%s' pinconfig\n", pinconfig);
++
++    /*
++     * TODO: Move GPIO handling out of the probe, if probe gets
++     * deferred, the gpio will have been claimed on previous
++     * probe and will fail on the second and susequent probes
++     */
++
++    /* request GPIO to control internal 24.576MHz oscillator */
++    ret = get_optional_gpio(&gpio_int_masterclk_enable, pdev,
++            "int-masterclk-enable", GPIOF_OUT_INIT_LOW);
++    if (ret < 0) {
++        goto asoc_botic_card_probe_error;
++    }
++
++    /* request GPIO to card power switch */
++    ret = get_optional_gpio(&gpio_card_power_switch, pdev,
++            "card-power-switch", GPIOF_OUT_INIT_LOW);
++    if (ret < 0) {
++        goto asoc_botic_card_probe_error;
++    }
++
++    if (ext_masterclk & (ENABLE_EXT_MASTERCLK_44K1 | ENABLE_EXT_MASTERCLK_48K)) {
++        /* request GPIO to switch between external 22.5792MHz and 24.576MHz oscillators */
++        ret = get_optional_gpio(&gpio_ext_masterclk_switch, pdev,
++                "ext-masterclk-switch", GPIOF_OUT_INIT_HIGH);
++        if (ret < 0) {
++            goto asoc_botic_card_probe_error;
++        }
++        switch (ext_masterclk & (ENABLE_EXT_MASTERCLK_44K1 | ENABLE_EXT_MASTERCLK_48K)) {
++            case ENABLE_EXT_MASTERCLK_44K1:
++                if (ext_masterclk & ENABLE_EXT_MASTERCLK_SINGLE) {
++                    clk_48k = 0;
++                } else {
++                    /* fallback to internal oscillator */
++                }
++                break;
++            case ENABLE_EXT_MASTERCLK_48K:
++                clk_44k1 = 0;
++                break;
++            case ENABLE_EXT_MASTERCLK_44K1 | ENABLE_EXT_MASTERCLK_48K:
++                /* use both oscillators */
++                break;
++        }
++    } else {
++        ext_masterclk = 0;
++        gpio_ext_masterclk_switch = -1;
++        /* TODO: which clock to disable */
++        clk_44k1 = 0;
++    }
++
++    if (dsd_format_switch & ENABLE_DSD_FORMAT_SWITCH) {
++        ret = get_optional_gpio(&gpio_dsd_format_switch, pdev,
++                "dsd-format-switch", GPIOF_OUT_INIT_HIGH);
++        if (ret < 0) {
++            goto asoc_botic_card_probe_error;
++        }
++    } else {
++        dsd_format_switch = 0;
++        gpio_dsd_format_switch = -1;
++    }
++
++    botic_dai.codec_of_node = of_parse_phandle(np, "audio-codec", 0);
++    if (botic_dai.codec_of_node) {
++        ret = of_property_read_string_index(np, "audio-codec-dai", 0,
++                &botic_dai.codec_dai_name);
++        if (ret < 0) {
++            goto asoc_botic_card_probe_error;
++        }
++    } else {
++        ret = -ENOENT;
++        goto asoc_botic_card_probe_error;
++    }
++
++    botic_dai.cpu_of_node = of_parse_phandle(np, "audio-port", 0);
++    if (!botic_dai.cpu_of_node) {
++        ret = -ENOENT;
++        goto asoc_botic_card_probe_error;
++    }
++
++    /* TODO */
++    botic_dai.platform_of_node = botic_dai.cpu_of_node;
++
++    botic_card.dev = &pdev->dev;
++
++    /* register card */
++    ret = snd_soc_register_card(&botic_card);
++    if (ret) {
++        dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n", ret);
++        goto asoc_botic_card_probe_error;
++    }
++
++#if 0
++    /* a hack for removing unsupported rates from the codec */
++    if (clk_44k1 == 0) {
++        botic_card.rtd[0].codec_dai->driver->playback.rates &=
++            ~(SNDRV_PCM_RATE_5512 | SNDRV_PCM_RATE_11025 |
++              SNDRV_PCM_RATE_22050 | SNDRV_PCM_RATE_44100 |
++              SNDRV_PCM_RATE_88200 | SNDRV_PCM_RATE_176400 |
++              SNDRV_PCM_RATE_352800 | SNDRV_PCM_RATE_705600 |
++              0);
++    }
++    if (clk_48k == 0) {
++        botic_card.rtd[0].codec_dai->driver->playback.rates &=
++            ~(SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
++              SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_48000 |
++              SNDRV_PCM_RATE_96000 | SNDRV_PCM_RATE_192000 |
++              SNDRV_PCM_RATE_384000 | SNDRV_PCM_RATE_768000 |
++              0);
++    }
++#endif
++
++    dev_info(&pdev->dev, "48k %s, 44k1 %s, %s format switch\n",
++            (ext_masterclk & ENABLE_EXT_MASTERCLK_48K) ? "ext" : (
++                clk_48k != 0 ? "int" : "none"),
++            (ext_masterclk & ENABLE_EXT_MASTERCLK_44K1) ? "ext" : "none",
++            (dsd_format_switch & ENABLE_DSD_FORMAT_SWITCH) ? "use" : "do not use");
++
++    if (gpio_card_power_switch >= 0) {
++        /* switch the card on */
++        gpio_set_value(gpio_card_power_switch, 1);
++    }
++
++asoc_botic_card_probe_error:
++    if (ret != 0) {
++        if (gpio_int_masterclk_enable >= 0) {
++            gpio_free(gpio_int_masterclk_enable);
++        }
++        if (gpio_card_power_switch >= 0) {
++            gpio_free(gpio_card_power_switch);
++        }
++        if (gpio_ext_masterclk_switch >= 0) {
++            gpio_free(gpio_ext_masterclk_switch);
++        }
++        if (gpio_dsd_format_switch >= 0) {
++            gpio_free(gpio_dsd_format_switch);
++        }
++    }
++
++    return ret;
++}
++
++static int asoc_botic_card_remove(struct platform_device *pdev)
++{
++    struct snd_soc_card *card = platform_get_drvdata(pdev);
++
++    snd_soc_unregister_card(card);
++
++    if (gpio_int_masterclk_enable >= 0) {
++        /* switch the oscillator off first */
++        gpio_set_value(gpio_int_masterclk_enable, 0);
++        gpio_free(gpio_int_masterclk_enable);
++    }
++    if (gpio_card_power_switch >= 0) {
++        /* switch the card off first */
++        gpio_set_value(gpio_card_power_switch, 0);
++        gpio_free(gpio_card_power_switch);
++    }
++    if (gpio_ext_masterclk_switch >= 0) {
++        gpio_free(gpio_ext_masterclk_switch);
++    }
++    if (gpio_dsd_format_switch >= 0) {
++        gpio_free(gpio_dsd_format_switch);
++    }
++
++    return 0;
++}
++
++static void asoc_botic_card_shutdown(struct platform_device *pdev)
++{
++    if (gpio_card_power_switch >= 0) {
++        /* switch the card off first */
++        gpio_set_value(gpio_card_power_switch, 0);
++        /* sleep until card will be powered down safely */
++        mdelay(1000);
++    }
++}
++
++#ifdef CONFIG_PM_SLEEP
++static int asoc_botic_card_suspend(struct platform_device *pdev, pm_message_t state)
++{
++    if (gpio_card_power_switch >= 0) {
++        /* switch the card off before going suspend */
++        gpio_set_value(gpio_card_power_switch, 0);
++    }
++
++    return 0;
++}
++
++static int asoc_botic_card_resume(struct platform_device *pdev)
++{
++    if (gpio_card_power_switch >= 0) {
++        /* switch the card on after resuming from suspend */
++        gpio_set_value(gpio_card_power_switch, 1);
++    }
++
++    return 0;
++}
++#else
++#define asoc_botic_card_suspend NULL
++#define asoc_botic_card_resume NULL
++#endif
++
++#if defined(CONFIG_OF)
++static const struct of_device_id asoc_botic_card_dt_ids[] = {
++    { .compatible = "botic-audio-card" },
++    { },
++};
++
++MODULE_DEVICE_TABLE(of, asoc_botic_card_dt_ids);
++#endif
++
++static struct platform_driver asoc_botic_card_driver = {
++    .probe = asoc_botic_card_probe,
++    .remove = asoc_botic_card_remove,
++    .shutdown = asoc_botic_card_shutdown,
++    .suspend = asoc_botic_card_suspend,
++    .resume = asoc_botic_card_resume,
++    .driver = {
++        .name = "asoc-botic-card",
++        .of_match_table = of_match_ptr(asoc_botic_card_dt_ids),
++    },
++};
++
++module_platform_driver(asoc_botic_card_driver);
++
++module_param(pinconfig, charp, 0444);
++MODULE_PARM_DESC(pinconfig, "selected pin configuration");
++
++module_param(ext_masterclk, int, 0444);
++MODULE_PARM_DESC(ext_masterclk, "available external masterclocks");
++
++module_param(dsd_format_switch, int, 0444);
++MODULE_PARM_DESC(dsd_format_switch, "mode of dsd format switch");
++
++module_param(serconfig, charp, 0644);
++MODULE_PARM_DESC(serconfig, "serializer configuration");
++
++module_param(dai_format, int, 0644);
++MODULE_PARM_DESC(dai_format, "output format and clock sources configuration");
++
++module_param(clk_44k1, int, 0644);
++MODULE_PARM_DESC(clk_44k1, "frequency of crystal for 44k1 modes");
++
++module_param(clk_48k, int, 0644);
++MODULE_PARM_DESC(clk_48k, "frequency of crystal for 48k modes");
++
++module_param(blr_ratio, int, 0644);
++MODULE_PARM_DESC(blr_ratio, "force BCLK/LRCLK ratio");
++
++MODULE_AUTHOR("Miroslav Rudisin");
++MODULE_DESCRIPTION("ASoC Botic sound card");
++MODULE_LICENSE("GPL");
++MODULE_ALIAS("platform:asoc-botic-card");
+-- 
+2.1.4
+

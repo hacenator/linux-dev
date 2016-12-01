@@ -44,9 +44,8 @@ copy_defconfig () {
 	cd "${DIR}/KERNEL" || exit
 	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" distclean
 	if [ ! -f "${DIR}/.yakbuild" ] ; then
-		make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" "${config}"
-		cp -v .config "${DIR}/patches/ref_${config}"
-		cp -v "${DIR}/patches/defconfig" .config
+		cp -v "${DIR}/patches/${config}" .config
+		make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" oldconfig
 	else
 		make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" rcn-ee_defconfig
 	fi
@@ -57,7 +56,7 @@ make_menuconfig () {
 	cd "${DIR}/KERNEL" || exit
 	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" menuconfig
 	if [ ! -f "${DIR}/.yakbuild" ] ; then
-		cp -v .config "${DIR}/patches/defconfig"
+		cp -v .config "${DIR}/patches/${config}"
 	fi
 	cd "${DIR}/" || exit
 }
@@ -75,7 +74,7 @@ make_deb () {
 	build_opts="${build_opts} KBUILD_DEBARCH=${DEBARCH}"
 	build_opts="${build_opts} LOCALVERSION=${BUILD}"
 	build_opts="${build_opts} KDEB_CHANGELOG_DIST=${deb_distro}"
-	build_opts="${build_opts} KDEB_PKGVERSION=1${DISTRO}"
+	build_opts="${build_opts} KDEB_PKGVERSION=${DISTRO}"
 	#Just use "linux-upstream"...
 	#https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/scripts/package/builddeb?id=3716001bcb7f5822382ac1f2f54226b87312cc6b
 	build_opts="${build_opts} KDEB_SOURCENAME=linux-upstream"

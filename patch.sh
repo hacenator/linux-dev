@@ -799,6 +799,33 @@ more_fixes () {
 	fi
 }
 
+botic () {
+	echo "dir: botic"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/botic/0001-ALSA-add-support-for-sampling-rates-up-to-768kHz.patch"
+	${git} "${DIR}/patches/botic/0002-ASoC-new-daifmt-DIT.patch"
+	${git} "${DIR}/patches/botic/0003-ASoC-declare-support-for-DSD-format.patch"
+	${git} "${DIR}/patches/botic/0004-ASoC-mcasp-support-right-justified-TX-DAI-format.patch"
+	${git} "${DIR}/patches/botic/0005-ASoC-mcasp-allow-to-change-serializer-cfg.patch"
+	${git} "${DIR}/patches/botic/0006-ASoC-mcasp-add-support-for-DSD-and-high-sampling.patch"
+	${git} "${DIR}/patches/botic/0007-ASoC-edma-increase-buffer-size-to-cover-200ms-of-DSD.patch"
+	${git} "${DIR}/patches/botic/0008-ASoC-mcasp-support-the-DIT-daifmt.patch"
+	${git} "${DIR}/patches/botic/0009-ASoC-mcasp-disable-unnecessary-pins-for-DIT-DSD-play.patch"
+	${git} "${DIR}/patches/botic/0010-ASoC-mcasp-add-suport-for-emulated-mute-pin-on-data-.patch"
+	${git} "${DIR}/patches/botic/0011-botic-card-codec-and-sabre32-codec.patch"
+	${git} "${DIR}/patches/botic/0012-tps65217-force-low-noise-fixed-frequency.patch"
+	${git} "${DIR}/patches/botic/0013-pm-shutdown-on-power-button-press-or-power-loss.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=13
+		cleanup
+	fi
+}
+
 ###
 reverts
 #fixes
@@ -814,6 +841,7 @@ bbb_overlays
 beaglebone
 quieter
 more_fixes
+botic
 
 packaging () {
 	echo "dir: packaging"
@@ -825,6 +853,7 @@ packaging () {
 		exit 2
 	else
 		${git} "${DIR}/patches/packaging/0001-packaging-sync-builddeb-changes.patch"
+		${git} "${DIR}/patches/packaging/0002-fixup-kernel-headers-target-package.patch"
 	fi
 }
 

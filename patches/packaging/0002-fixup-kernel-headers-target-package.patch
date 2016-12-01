@@ -1,0 +1,76 @@
+From 64524bb801ae4335d846443e891b637e1ce37861 Mon Sep 17 00:00:00 2001
+From: Miroslav Rudisin <miero@seznam.cz>
+Date: Thu, 1 Dec 2016 02:13:59 +0100
+Subject: [PATCH] fixup kernel headers target package
+
+---
+ scripts/package/builddeb | 45 +++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 43 insertions(+), 2 deletions(-)
+
+diff --git a/scripts/package/builddeb b/scripts/package/builddeb
+index f9dba41..c33b48b 100755
+--- a/scripts/package/builddeb
++++ b/scripts/package/builddeb
+@@ -334,9 +334,10 @@ fi
+ 
+ # Build kernel header package
+ (cd $srctree; find . -name Makefile\* -o -name Kconfig\* -o -name \*.pl) > "$objtree/debian/hdrsrcfiles"
+-(cd $srctree; find arch/*/include include scripts -type f) >> "$objtree/debian/hdrsrcfiles"
++(cd $srctree; find arch/$SRCARCH/include include scripts tools/include -type f -o -type l ) >> "$objtree/debian/hdrsrcfiles"
++(cd $srctree; find arch/$SRCARCH -name \*.dtsi ) >> "$objtree/debian/hdrsrcfiles"
+ (cd $srctree; find arch/$SRCARCH -name module.lds -o -name Kbuild.platforms -o -name Platform) >> "$objtree/debian/hdrsrcfiles"
+-(cd $srctree; find $(find arch/$SRCARCH -name include -o -name scripts -type d) -type f) >> "$objtree/debian/hdrsrcfiles"
++(cd $srctree; find $(find arch/$SRCARCH -name include -o -name scripts -type d) -type f -o -type l ) >> "$objtree/debian/hdrsrcfiles"
+ if grep -q '^CONFIG_STACK_VALIDATION=y' $KCONFIG_CONFIG ; then
+ 	(cd $objtree; find tools/objtool -type f -executable) >> "$objtree/debian/hdrobjfiles"
+ fi
+@@ -346,6 +347,46 @@ if grep -q '^CONFIG_GCC_PLUGINS=y' $KCONFIG_CONFIG ; then
+ fi
+ destdir=$kernel_headers_dir/usr/src/linux-headers-$version
+ mkdir -p "$destdir"
++# Exclude host binaries
++sed -i \
++	-e '\@scripts/dtc/dtc$@d' \
++	-e '\@scripts/basic/fixdep$@d' \
++	-e '\@scripts/basic/bin2c$@d' \
++	-e '\@scripts/unifdef$@d' \
++	-e '\@scripts/genksyms/genksyms$@d' \
++	-e '\@scripts/conmakehash$@d' \
++	-e '\@scripts/recordmcount$@d' \
++	-e '\@scripts/kconfig/mconf$@d' \
++	-e '\@scripts/kconfig/conf$@d' \
++	-e '\@scripts/sortextable$@d' \
++	-e '\@scripts/mod/modpost$@d' \
++	-e '\@scripts/mod/mk_elfconfig$@d' \
++	-e '\@scripts/selinux/genheaders/genheaders$@d' \
++	-e '\@scripts/selinux/mdp/mdp$@d' \
++	-e '\@scripts/kallsyms$@d' \
++	-e '\@scripts/.*\.cmd$@d' \
++	-e '\@scripts/.*\.o$@d' \
++	"$objtree/debian/hdrsrcfiles"
++sed -i \
++	-e '\@scripts/dtc/dtc$@d' \
++	-e '\@scripts/basic/fixdep$@d' \
++	-e '\@scripts/basic/bin2c$@d' \
++	-e '\@scripts/unifdef$@d' \
++	-e '\@scripts/genksyms/genksyms$@d' \
++	-e '\@scripts/conmakehash$@d' \
++	-e '\@scripts/recordmcount$@d' \
++	-e '\@scripts/kconfig/mconf$@d' \
++	-e '\@scripts/kconfig/conf$@d' \
++	-e '\@scripts/sortextable$@d' \
++	-e '\@scripts/mod/modpost$@d' \
++	-e '\@scripts/mod/mk_elfconfig$@d' \
++	-e '\@scripts/selinux/genheaders/genheaders$@d' \
++	-e '\@scripts/selinux/mdp/mdp$@d' \
++	-e '\@scripts/kallsyms$@d' \
++	-e '\@scripts/.*\.cmd$@d' \
++	-e '\@scripts/.*\.o$@d' \
++	"$objtree/debian/hdrobjfiles"
++# Exclude ignored files too
+ (cd $srctree; tar -c -f - -T -) < "$objtree/debian/hdrsrcfiles" | (cd $destdir; tar -xf -)
+ (cd $objtree; tar -c -f - -T -) < "$objtree/debian/hdrobjfiles" | (cd $destdir; tar -xf -)
+ (cd $objtree; cp $KCONFIG_CONFIG $destdir/.config) # copy .config manually to be where it's expected to be
+-- 
+2.1.4
+

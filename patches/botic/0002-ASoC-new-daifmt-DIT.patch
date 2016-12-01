@@ -1,0 +1,25 @@
+From d8528d1b21d35d03ad6d74aed0f00170bd5417fa Mon Sep 17 00:00:00 2001
+From: Miroslav Rudisin <miero@seznam.cz>
+Date: Sun, 6 Mar 2016 10:56:10 +0100
+Subject: [PATCH] ASoC: new daifmt DIT
+
+---
+ include/sound/soc-dai.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/include/sound/soc-dai.h b/include/sound/soc-dai.h
+index 964b7de..faed116 100644
+--- a/include/sound/soc-dai.h
++++ b/include/sound/soc-dai.h
+@@ -33,6 +33,8 @@ struct snd_compr_stream;
+ #define SND_SOC_DAIFMT_DSP_B		5 /* L data MSB during FRM LRC */
+ #define SND_SOC_DAIFMT_AC97		6 /* AC97 */
+ #define SND_SOC_DAIFMT_PDM		7 /* Pulse density modulation */
++#define SND_SOC_DAIFMT_DIT		8 /* Digital Audio Interface Transmit
++					     (S/PDIF, AES-3, or IEC-60958 format) */
+ 
+ /* left and right justified also known as MSB and LSB respectively */
+ #define SND_SOC_DAIFMT_MSB		SND_SOC_DAIFMT_LEFT_J
+-- 
+2.1.4
+
