@@ -38,6 +38,6 @@ kernel_rt=".X-rtY"
 #git branch
 #BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
-DISTRO=cross
+DISTRO=1
 DEBARCH=armhf
 #
