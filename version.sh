@@ -4,7 +4,7 @@ ARCH=$(uname -m)
 
 config="botic_defconfig"
 
-build_prefix="-botic7-rc2"
+build_prefix="-botic7-rc3"
 branch_prefix="v"
 branch_postfix=".x"
 
