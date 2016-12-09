@@ -1,12 +1,12 @@
-From 8cd07ba2105ecc5c4b0a86929fee16f89734eb44 Mon Sep 17 00:00:00 2001
+From 6021df0befb991dde902df8985824b62b0c58271 Mon Sep 17 00:00:00 2001
 From: Miroslav Rudisin <miero@seznam.cz>
 Date: Wed, 30 Nov 2016 22:46:19 +0100
 Subject: [PATCH] botic card, codec and sabre32 codec
 
 ---
  arch/arm/boot/dts/Makefile                         |   2 +
- .../boot/dts/am335x-boneblack-botic-sabre32.dts    | 162 ++++
- arch/arm/boot/dts/am335x-boneblack-botic.dts       | 161 ++++
+ .../boot/dts/am335x-boneblack-botic-sabre32.dts    | 154 ++++
+ arch/arm/boot/dts/am335x-boneblack-botic.dts       | 153 ++++
  sound/soc/codecs/Kconfig                           |   9 +
  sound/soc/codecs/Makefile                          |   4 +
  sound/soc/codecs/botic-codec.c                     | 123 +++
@@ -14,7 +14,7 @@ Subject: [PATCH] botic card, codec and sabre32 codec
  sound/soc/generic/Kconfig                          |  14 +
  sound/soc/generic/Makefile                         |   2 +
  sound/soc/generic/botic-card.c                     | 629 +++++++++++++++
- 10 files changed, 2004 insertions(+)
+ 10 files changed, 1988 insertions(+)
  create mode 100644 arch/arm/boot/dts/am335x-boneblack-botic-sabre32.dts
  create mode 100644 arch/arm/boot/dts/am335x-boneblack-botic.dts
  create mode 100644 sound/soc/codecs/botic-codec.c
@@ -36,10 +36,10 @@ index eaf585d..7d6ec34 100644
  	am335x-olimex-som.dtb \
 diff --git a/arch/arm/boot/dts/am335x-boneblack-botic-sabre32.dts b/arch/arm/boot/dts/am335x-boneblack-botic-sabre32.dts
 new file mode 100644
-index 0000000..ec9b3bdd
+index 0000000..11d4f79
 --- /dev/null
 +++ b/arch/arm/boot/dts/am335x-boneblack-botic-sabre32.dts
-@@ -0,0 +1,162 @@
+@@ -0,0 +1,154 @@
 +/*
 + * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
 + *
@@ -51,6 +51,7 @@ index 0000000..ec9b3bdd
 +
 +#include "am33xx.dtsi"
 +#include "am335x-bone-common-no-capemgr.dtsi"
++#include "am33xx-overlay-edma-fix.dtsi"
 +
 +/ {
 +	model = "TI AM335x BeagleBone Black";
@@ -75,23 +76,14 @@ index 0000000..ec9b3bdd
 +	status = "okay";
 +};
 +
-+/ {
-+	cpus {
-+		cpu@0 {
-+			cpu0-supply = <&dcdc2_reg>;
-+			/*
-+			 * To consider voltage drop between PMIC and SoC,
-+			 * tolerance value is reduced to 2% from 4% and
-+			 * voltage value is increased as a precaution.
-+			 */
-+			operating-points = <
-+				/* kHz    uV */
-+				1000000	1325000
-+				800000	1300000
-+				600000	1112000
-+				300000	969000
-+			>;
-+		};
++&cpu0_opp_table {
++	/*
++	 * All PG 2.0 silicon may not support 1GHz but some of the early
++	 * BeagleBone Blacks have PG 2.0 silicon which is guaranteed
++	 * to support 1GHz OPP so enable it for PG 2.0 on this board.
++	 */
++	oppnitro@1000000000 {
++		opp-supported-hw = <0x06 0x0100>;
 +	};
 +};
 +
@@ -204,10 +196,10 @@ index 0000000..ec9b3bdd
 +};
 diff --git a/arch/arm/boot/dts/am335x-boneblack-botic.dts b/arch/arm/boot/dts/am335x-boneblack-botic.dts
 new file mode 100644
-index 0000000..0ba4307
+index 0000000..40ec7fd
 --- /dev/null
 +++ b/arch/arm/boot/dts/am335x-boneblack-botic.dts
-@@ -0,0 +1,161 @@
+@@ -0,0 +1,153 @@
 +/*
 + * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
 + *
@@ -219,6 +211,7 @@ index 0000000..0ba4307
 +
 +#include "am33xx.dtsi"
 +#include "am335x-bone-common-no-capemgr.dtsi"
++#include "am33xx-overlay-edma-fix.dtsi"
 +
 +/ {
 +	model = "TI AM335x BeagleBone Black";
@@ -243,23 +236,14 @@ index 0000000..0ba4307
 +	status = "okay";
 +};
 +
-+/ {
-+	cpus {
-+		cpu@0 {
-+			cpu0-supply = <&dcdc2_reg>;
-+			/*
-+			 * To consider voltage drop between PMIC and SoC,
-+			 * tolerance value is reduced to 2% from 4% and
-+			 * voltage value is increased as a precaution.
-+			 */
-+			operating-points = <
-+				/* kHz    uV */
-+				1000000	1325000
-+				800000	1300000
-+				600000	1112000
-+				300000	969000
-+			>;
-+		};
++&cpu0_opp_table {
++	/*
++	 * All PG 2.0 silicon may not support 1GHz but some of the early
++	 * BeagleBone Blacks have PG 2.0 silicon which is guaranteed
++	 * to support 1GHz OPP so enable it for PG 2.0 on this board.
++	 */
++	oppnitro@1000000000 {
++		opp-supported-hw = <0x06 0x0100>;
 +	};
 +};
 +
