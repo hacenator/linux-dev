@@ -250,12 +250,14 @@ ti () {
 			start_cleanup
 		fi
 
-		${git} "${DIR}/patches/ti/ticpufreq/0001-Documentation-dt-add-bindings-for-ti-cpufreq.patch"
-		${git} "${DIR}/patches/ti/ticpufreq/0002-cpufreq-ti-Add-cpufreq-driver-to-determine-available.patch"
+		${git} "${DIR}/patches/ti/ticpufreq/0001-PM-OPP-Expose-_of_get_opp_desc_node-as-dev_pm_opp-AP.patch"
+		${git} "${DIR}/patches/ti/ticpufreq/0002-Documentation-dt-add-bindings-for-ti-cpufreq.patch"
+		${git} "${DIR}/patches/ti/ticpufreq/0003-cpufreq-ti-Add-cpufreq-driver-to-determine-available.patch"
+		${git} "${DIR}/patches/ti/ticpufreq/0004-cpufreq-dt-Don-t-use-generic-platdev-driver-for-ti-c.patch"
 
 		if [ "x${regenerate}" = "xenable" ] ; then
 			wdir="ti/ticpufreq"
-			number=2
+			number=4
 			cleanup
 		fi
 	fi
