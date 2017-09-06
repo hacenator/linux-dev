@@ -828,6 +828,22 @@ botic () {
 	fi
 }
 
+rt () {
+	echo "dir: rt"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	. ${DIR}/rt.sh
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=13
+		cleanup
+	fi
+}
+
+
 ###
 reverts
 #fixes
@@ -835,6 +851,7 @@ ti
 dts
 wand
 #sunxi
+#
 udoo
 exynos
 pru_uio
@@ -844,6 +861,7 @@ beaglebone
 quieter
 more_fixes
 botic
+rt
 
 packaging () {
 	echo "dir: packaging"
