@@ -1,0 +1,37 @@
+From 1690c082fd84ec11ddf084a264de9655951f3ffc Mon Sep 17 00:00:00 2001
+From: Miroslav Rudisin <miero@seznam.cz>
+Date: Thu, 1 Dec 2016 01:51:33 +0100
+Subject: [PATCH] ASoC: edma: increase buffer size to cover 200ms of DSD512
+
+---
+ sound/soc/davinci/edma-pcm.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/sound/soc/davinci/edma-pcm.c b/sound/soc/davinci/edma-pcm.c
+index 59e588a..d5fd89a 100644
+--- a/sound/soc/davinci/edma-pcm.c
++++ b/sound/soc/davinci/edma-pcm.c
+@@ -33,9 +33,9 @@ static const struct snd_pcm_hardware edma_pcm_hardware = {
+ 				  SNDRV_PCM_INFO_PAUSE | SNDRV_PCM_INFO_RESUME |
+ 				  SNDRV_PCM_INFO_NO_PERIOD_WAKEUP |
+ 				  SNDRV_PCM_INFO_INTERLEAVED,
+-	.buffer_bytes_max	= 128 * 1024,
++	.buffer_bytes_max	= 24 * 128 * 1024,
+ 	.period_bytes_min	= 32,
+-	.period_bytes_max	= 64 * 1024,
++	.period_bytes_max	= 24 * 64 * 1024,
+ 	.periods_min		= 2,
+ 	.periods_max		= 19, /* Limit by edma dmaengine driver */
+ };
+@@ -44,7 +44,7 @@ static const struct snd_dmaengine_pcm_config edma_dmaengine_pcm_config = {
+ 	.pcm_hardware = &edma_pcm_hardware,
+ 	.prepare_slave_config = snd_dmaengine_pcm_prepare_slave_config,
+ 	.compat_filter_fn = edma_filter_fn,
+-	.prealloc_buffer_size = 128 * 1024,
++	.prealloc_buffer_size = 24 * 128 * 1024,
+ };
+ 
+ int edma_pcm_platform_register(struct device *dev)
+-- 
+2.1.4
+
